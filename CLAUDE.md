@@ -109,3 +109,7 @@ bun --hot ./index.ts
 ```
 
 For more information, read the Bun API docs in `node_modules/bun-types/docs/**.mdx`.
+
+## Reference Implementations
+
+The `scaffold/` directory contains implementation references and examples (gastown, nanobot, etc.). These are not the main production code but serve as reference architectures for agent communication patterns.
