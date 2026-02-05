@@ -1,7 +1,4 @@
 import { loadConfig, getConfig, saveConfig } from "../config";
-import { agentLoop } from "../agent";
-import { channelManager, createChannelsFromConfig, CLIChannel } from "../channels";
-import { bus } from "../bus";
 import { join } from "path";
 import { homedir } from "os";
 import { mkdir } from "fs/promises";
@@ -9,29 +6,56 @@ import { mkdir } from "fs/promises";
 export async function runChat(message?: string): Promise<void> {
   await loadConfig();
 
+  // Import ctl module lazily to avoid circular deps
+  const { TmuxDriver } = await import("../ctl/tmux");
+  const { AgentManager } = await import("../ctl/manager");
+  const { ClaudeCodeAdapter } = await import("../ctl/adapters/claude-code");
+
+  const tmux = new TmuxDriver();
+  const manager = new AgentManager(tmux);
+  manager.registerAdapter(new ClaudeCodeAdapter());
+
+  const config = getConfig();
+
+  // Spawn a Claude Code agent
+  const agent = await manager.spawn("claude-code", {
+    project: process.cwd(),
+    model: config.agent.model,
+  });
+
   if (message) {
     // Single message mode
-    const response = await agentLoop.processMessage(message);
-    console.log(response);
+    const response = await manager.send(agent.id, message);
+    console.log(response.text);
+    await manager.kill(agent.id);
     return;
   }
 
-  // Interactive mode
-  await agentLoop.start();
-  createChannelsFromConfig();
-  await channelManager.startAll();
+  // Interactive mode - attach to the tmux session
+  console.log("Attaching to Claude Code session...");
+  console.log("Use Ctrl+B D to detach, or exit Claude Code to end.\n");
+
+  const attachCmd = manager.getAttachCommand(agent.id);
+  const proc = Bun.spawn(["sh", "-c", attachCmd], {
+    stdin: "inherit",
+    stdout: "inherit",
+    stderr: "inherit",
+  });
+  await proc.exited;
+
+  // Clean up after detach/exit
+  try {
+    await manager.kill(agent.id);
+  } catch {
+    // Session may already be dead
+  }
 }
 
 export async function runGateway(): Promise<void> {
   await loadConfig();
-  await agentLoop.start();
-  createChannelsFromConfig();
-  await channelManager.startAll();
 
-  console.log("Gateway started. Channels:", channelManager.getRunning().map((c) => c.name).join(", "));
-
-  // Keep running
-  await new Promise(() => {});
+  console.log("Gateway mode is not yet implemented for ctl-based architecture.");
+  console.log("Use 'botctl spawn' to create agents and 'botctl send' to interact.");
 }
 
 export async function runOnboard(): Promise<void> {
@@ -71,7 +95,6 @@ You are a helpful AI assistant. Your capabilities include:
 - Be concise and helpful
 - Use tools when needed
 - Break complex tasks into smaller steps
-- Spawn subagents for independent, parallelizable work
 `;
 
   const soulContent = `# Personality
@@ -84,9 +107,10 @@ You are friendly, knowledgeable, and efficient. You aim to help users accomplish
 
   console.log("✅ Workspace created at:", workspaceDir);
   console.log("\nTo get started:");
-  console.log("  1. Set ANTHROPIC_API_KEY environment variable");
-  console.log("  2. Run: bun run chat");
-  console.log("\nOr customize your config at:", join(workspaceDir, "config.json"));
+  console.log("  1. Run: botctl spawn");
+  console.log("  2. Run: botctl send <agent-id> 'your message'");
+  console.log("\nOr for interactive mode:");
+  console.log("  Run: bun run chat");
 }
 
 export async function runStatus(): Promise<void> {
@@ -95,19 +119,25 @@ export async function runStatus(): Promise<void> {
 
   console.log("botctl status\n");
   console.log("Workspace:", config.workspace);
-  console.log("Provider:", config.agent.provider);
   console.log("Model:", config.agent.model);
 
-  // Check provider
-  const providers = Object.entries(config.providers).filter(
-    ([_, p]) => p?.enabled || p?.apiKey
-  );
-  console.log("\nConfigured providers:");
-  for (const [name, p] of providers) {
-    console.log(`  - ${name}: ${p?.apiKey ? "✅ API key set" : "❌ No API key"}`);
+  // Check for tmux
+  const tmuxCheck = Bun.spawn(["which", "tmux"], { stdout: "pipe" });
+  const tmuxPath = await new Response(tmuxCheck.stdout).text();
+
+  if (tmuxPath.trim()) {
+    console.log("\n✅ tmux found:", tmuxPath.trim());
+  } else {
+    console.log("\n❌ tmux not found - required for agent management");
   }
 
-  if (providers.length === 0) {
-    console.log("  (none)");
+  // Check for claude CLI
+  const claudeCheck = Bun.spawn(["which", "claude"], { stdout: "pipe" });
+  const claudePath = await new Response(claudeCheck.stdout).text();
+
+  if (claudePath.trim()) {
+    console.log("✅ claude found:", claudePath.trim());
+  } else {
+    console.log("❌ claude not found - install Claude Code CLI");
   }
 }

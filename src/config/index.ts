@@ -1,11 +1,11 @@
 import { join } from "path";
 import { homedir } from "os";
-import type { Config, ProviderConfig } from "../types";
+import type { Config } from "../types";
 
 const DEFAULT_CONFIG: Config = {
   agent: {
     model: "claude-sonnet-4-20250514",
-    provider: "anthropic",
+    provider: "claude-code",
     maxTokens: 4096,
     temperature: 0.7,
     maxToolIterations: 25,
@@ -39,9 +39,6 @@ export async function loadConfig(customPath?: string): Promise<Config> {
     config = { ...DEFAULT_CONFIG };
   }
 
-  // Load provider API keys from environment
-  loadEnvProviders(config);
-
   return config;
 }
 
@@ -53,25 +50,6 @@ function mergeConfig(defaults: Config, loaded: Partial<Config>): Config {
     tools: { ...defaults.tools, ...loaded.tools },
     workspace: loaded.workspace ?? defaults.workspace,
   };
-}
-
-function loadEnvProviders(cfg: Config): void {
-  const envMappings: Record<string, keyof Config["providers"]> = {
-    ANTHROPIC_API_KEY: "anthropic",
-    OPENAI_API_KEY: "openai",
-    OPENROUTER_API_KEY: "openrouter",
-  };
-
-  for (const [envVar, provider] of Object.entries(envMappings)) {
-    const apiKey = process.env[envVar];
-    if (apiKey) {
-      cfg.providers[provider] = {
-        ...cfg.providers[provider],
-        apiKey,
-        enabled: true,
-      };
-    }
-  }
 }
 
 export async function saveConfig(cfg: Config, customPath?: string): Promise<void> {
@@ -88,31 +66,4 @@ export function getConfig(): Config {
     throw new Error("Config not loaded. Call loadConfig() first.");
   }
   return config;
-}
-
-export function getProvider(): { name: string; config: ProviderConfig } {
-  const cfg = getConfig();
-
-  // Priority order for providers
-  const priority: (keyof Config["providers"])[] = [
-    "anthropic",
-    "openai",
-    "openrouter",
-    "ollama",
-  ];
-
-  for (const name of priority) {
-    const provider = cfg.providers[name];
-    if (provider?.enabled && provider.apiKey) {
-      return { name, config: provider };
-    }
-  }
-
-  // Check if explicit provider is set
-  const explicit = cfg.agent.provider as keyof Config["providers"];
-  if (cfg.providers[explicit]) {
-    return { name: explicit, config: cfg.providers[explicit]! };
-  }
-
-  throw new Error("No LLM provider configured. Set ANTHROPIC_API_KEY or configure a provider.");
 }
