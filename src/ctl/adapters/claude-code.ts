@@ -11,13 +11,26 @@ export class ClaudeCodeAdapter implements AgentAdapter {
     const dir = await createWorkspaceDir("claude");
 
     // Copy skills
-    if (config.skills.length > 0) {
+    if (config.skills && config.skills.length > 0) {
       await copySkills(config.skills, join(dir, "skills"));
     }
 
     // Write CLAUDE.md instructions
     if (config.instructions) {
       await Bun.write(join(dir, "CLAUDE.md"), config.instructions);
+    }
+
+    // Write .claude/settings.json for mcps, tools, and plugins
+    if (config.mcps || config.tools || config.plugins) {
+      const settingsDir = join(dir, ".claude");
+      await Bun.write(
+        join(settingsDir, "settings.json"),
+        JSON.stringify({
+          ...(config.mcps && { mcpServers: config.mcps }),
+          ...(config.tools && { allowedTools: config.tools }),
+          ...(config.plugins && { plugins: config.plugins }),
+        }, null, 2)
+      );
     }
 
     return dir;

@@ -2,7 +2,10 @@
 import type { ToolCall } from "../types";
 
 export interface WorkspaceConfig {
-  skills: string[];
+  skills?: string[];
+  mcps?: string[];
+  tools?: string[];
+  plugins?: string[];
   instructions?: string;
   env?: Record<string, string>;
 }
