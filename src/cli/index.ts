@@ -4,6 +4,10 @@ import { runChat, runGateway, runOnboard, runStatus } from "./commands";
 import { runSpawn } from "./commands/spawn";
 import { runSend } from "./commands/send";
 import { runOutput } from "./commands/output";
+import { runList } from "./commands/list";
+import { runKill } from "./commands/kill";
+import { runAttach } from "./commands/attach";
+import { runSkill } from "./commands/skill";
 
 const args = process.argv.slice(2);
 const command = args[0];
@@ -45,6 +49,22 @@ async function main() {
       await runOutput(args.slice(1));
       break;
 
+    case "list":
+      await runList();
+      break;
+
+    case "kill":
+      await runKill(args.slice(1));
+      break;
+
+    case "attach":
+      await runAttach(args.slice(1));
+      break;
+
+    case "skill":
+      await runSkill(args.slice(1));
+      break;
+
     case "help":
     case "--help":
     case "-h":
@@ -73,6 +93,10 @@ Commands:
   spawn             Spawn an agent in tmux
   send              Send a prompt to an agent
   output            Show terminal output from an agent
+  list              Show all running agents
+  kill              Terminate an agent
+  attach            Attach to agent's tmux session
+  skill             Hot-load a skill into an agent
   gateway           Start all configured channels
   onboard           Set up workspace and config
   status            Show configuration status
@@ -91,6 +115,10 @@ Examples:
   botctl send <agent-id> "Build a todo app"   # Send prompt to agent
   botctl send --async <agent-id> "Task"       # Send without waiting
   botctl output <agent-id>                    # View agent output
+  botctl list                                 # List all running agents
+  botctl kill <agent-id>                      # Kill an agent
+  botctl attach <agent-id>                    # Attach to agent session
+  botctl skill <agent-id> ./skill.md          # Load skill into agent
   botctl gateway                    # Run with all channels
 `);
 }
