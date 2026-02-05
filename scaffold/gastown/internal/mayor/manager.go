@@ -1,0 +1,182 @@
+package mayor
+
+import (
+	"errors"
+	"fmt"
+	"os"
+	"path/filepath"
+	"time"
+
+	"github.com/steveyegge/gastown/internal/config"
+	"github.com/steveyegge/gastown/internal/constants"
+	"github.com/steveyegge/gastown/internal/runtime"
+	"github.com/steveyegge/gastown/internal/session"
+	"github.com/steveyegge/gastown/internal/tmux"
+)
+
+// Common errors
+var (
+	ErrNotRunning     = errors.New("mayor not running")
+	ErrAlreadyRunning = errors.New("mayor already running")
+)
+
+// Manager handles mayor lifecycle operations.
+type Manager struct {
+	townRoot string
+}
+
+// NewManager creates a new mayor manager for a town.
+func NewManager(townRoot string) *Manager {
+	return &Manager{
+		townRoot: townRoot,
+	}
+}
+
+// SessionName returns the tmux session name for the mayor.
+// This is a package-level function for convenience.
+func SessionName() string {
+	return session.MayorSessionName()
+}
+
+// SessionName returns the tmux session name for the mayor.
+func (m *Manager) SessionName() string {
+	return SessionName()
+}
+
+// mayorDir returns the working directory for the mayor.
+func (m *Manager) mayorDir() string {
+	return filepath.Join(m.townRoot, "mayor")
+}
+
+// Start starts the mayor session.
+// agentOverride optionally specifies a different agent alias to use.
+func (m *Manager) Start(agentOverride string) error {
+	t := tmux.NewTmux()
+	sessionID := m.SessionName()
+
+	// Check if session already exists
+	running, _ := t.HasSession(sessionID)
+	if running {
+		// Session exists - check if agent is actually running (healthy vs zombie)
+		if t.IsAgentAlive(sessionID) {
+			return ErrAlreadyRunning
+		}
+		// Zombie - tmux alive but agent dead. Kill and recreate.
+		if err := t.KillSession(sessionID); err != nil {
+			return fmt.Errorf("killing zombie session: %w", err)
+		}
+	}
+
+	// Ensure mayor directory exists (for Claude settings)
+	mayorDir := m.mayorDir()
+	if err := os.MkdirAll(mayorDir, 0755); err != nil {
+		return fmt.Errorf("creating mayor directory: %w", err)
+	}
+
+	// Ensure runtime settings exist
+	runtimeConfig := config.ResolveRoleAgentConfig("mayor", m.townRoot, mayorDir)
+	if err := runtime.EnsureSettingsForRole(mayorDir, "mayor", runtimeConfig); err != nil {
+		return fmt.Errorf("ensuring runtime settings: %w", err)
+	}
+
+	// Build startup beacon with explicit instructions (matches gt handoff behavior)
+	// This ensures the agent has clear context immediately, not after nudges arrive
+	beacon := session.FormatStartupBeacon(session.BeaconConfig{
+		Recipient: "mayor",
+		Sender:    "human",
+		Topic:     "cold-start",
+	})
+
+	// Build startup command WITH the beacon prompt - the startup hook handles 'gt prime' automatically
+	// Export GT_ROLE and BD_ACTOR in the command since tmux SetEnvironment only affects new panes
+	startupCmd, err := config.BuildAgentStartupCommandWithAgentOverride("mayor", "", m.townRoot, "", beacon, agentOverride)
+	if err != nil {
+		return fmt.Errorf("building startup command: %w", err)
+	}
+
+	// Create session in mayorDir - Mayor's home directory within the town.
+	// Tools like gt prime use workspace.FindFromCwd() which walks UP to find
+	// town root, so running from ~/gt/mayor/ still finds ~/gt/ correctly.
+	if err := t.NewSessionWithCommand(sessionID, mayorDir, startupCmd); err != nil {
+		return fmt.Errorf("creating tmux session: %w", err)
+	}
+
+	// Set environment variables (non-fatal: session works without these)
+	// Use centralized AgentEnv for consistency across all role startup paths
+	envVars := config.AgentEnv(config.AgentEnvConfig{
+		Role:     "mayor",
+		TownRoot: m.townRoot,
+	})
+	for k, v := range envVars {
+		_ = t.SetEnvironment(sessionID, k, v)
+	}
+
+	// Apply Mayor theming (non-fatal: theming failure doesn't affect operation)
+	theme := tmux.MayorTheme()
+	_ = t.ConfigureGasTownSession(sessionID, theme, "", "Mayor", "coordinator")
+
+	// Wait for Claude to start - fatal if Claude fails to launch
+	if err := t.WaitForCommand(sessionID, constants.SupportedShells, constants.ClaudeStartTimeout); err != nil {
+		// Kill the zombie session before returning error
+		_ = t.KillSessionWithProcesses(sessionID)
+		return fmt.Errorf("waiting for mayor to start: %w", err)
+	}
+
+	// Accept bypass permissions warning dialog if it appears.
+	_ = t.AcceptBypassPermissionsWarning(sessionID)
+
+	time.Sleep(constants.ShutdownNotifyDelay)
+
+	// Startup beacon with instructions is now included in the initial command,
+	// so no separate nudge needed. The agent starts with full context immediately.
+
+	return nil
+}
+
+// Stop stops the mayor session.
+func (m *Manager) Stop() error {
+	t := tmux.NewTmux()
+	sessionID := m.SessionName()
+
+	// Check if session exists
+	running, err := t.HasSession(sessionID)
+	if err != nil {
+		return fmt.Errorf("checking session: %w", err)
+	}
+	if !running {
+		return ErrNotRunning
+	}
+
+	// Try graceful shutdown first (best-effort interrupt)
+	_ = t.SendKeysRaw(sessionID, "C-c")
+	time.Sleep(100 * time.Millisecond)
+
+	// Kill the session
+	if err := t.KillSession(sessionID); err != nil {
+		return fmt.Errorf("killing session: %w", err)
+	}
+
+	return nil
+}
+
+// IsRunning checks if the mayor session is active.
+func (m *Manager) IsRunning() (bool, error) {
+	t := tmux.NewTmux()
+	return t.HasSession(m.SessionName())
+}
+
+// Status returns information about the mayor session.
+func (m *Manager) Status() (*tmux.SessionInfo, error) {
+	t := tmux.NewTmux()
+	sessionID := m.SessionName()
+
+	running, err := t.HasSession(sessionID)
+	if err != nil {
+		return nil, fmt.Errorf("checking session: %w", err)
+	}
+	if !running {
+		return nil, ErrNotRunning
+	}
+
+	return t.GetSessionInfo(sessionID)
+}
