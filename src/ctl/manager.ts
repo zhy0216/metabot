@@ -68,13 +68,15 @@ export class AgentManager {
     const adapter = this.getAdapter(agent.type);
 
     agent.status = "working";
-    const formatted = adapter.formatPrompt(prompt);
-    await this.tmux.sendKeys(agent.sessionName, formatted);
+    try {
+      const formatted = adapter.formatPrompt(prompt);
+      await this.tmux.sendKeys(agent.sessionName, formatted);
 
-    const raw = await this.waitForReady(agent.sessionName, adapter);
-    agent.status = "idle";
-
-    return adapter.parseOutput(raw);
+      const raw = await this.waitForReady(agent.sessionName, adapter);
+      return adapter.parseOutput(raw);
+    } finally {
+      agent.status = "idle";
+    }
   }
 
   async sendAsync(id: string, prompt: string): Promise<void> {
