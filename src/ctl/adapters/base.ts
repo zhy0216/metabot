@@ -1,7 +1,6 @@
 // src/ctl/adapters/base.ts
-import { mkdir, cp } from "node:fs/promises";
+import { mkdir } from "node:fs/promises";
 import { join, basename } from "node:path";
-import type { AgentAdapter, WorkspaceConfig } from "../types";
 
 // Strip ANSI escape codes from terminal output
 export function stripAnsi(str: string): string {
