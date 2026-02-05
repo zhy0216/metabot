@@ -8,7 +8,9 @@ async function main() {
   const manager = new AgentManager(tmux);
   manager.registerAdapter(new ClaudeCodeAdapter());
 
-  const projectDir = `${process.cwd()}/examples/parallel-agents/demo-project`;
+  // Create a temp project directory for the demo
+  const projectId = Math.random().toString(36).substring(2, 10);
+  const projectDir = `/tmp/parallel-agents-${projectId}`;
   await Bun.$`mkdir -p ${projectDir}`.quiet();
 
   console.log("🚀 Spawning parallel agents...\n");

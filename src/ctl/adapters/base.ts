@@ -7,11 +7,15 @@ export function stripAnsi(str: string): string {
   return str.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, "").replace(/\x1b\][^\x07]*\x07/g, "");
 }
 
-// Create a temp workspace directory and populate with skills
+// Create a temp workspace directory from template
 export async function createWorkspaceDir(prefix: string): Promise<string> {
   const id = crypto.randomUUID().slice(0, 8);
   const dir = join("/tmp", `botctl-${prefix}-${id}`);
-  await mkdir(dir, { recursive: true });
+
+  // Copy workspace template
+  const templateDir = join(import.meta.dir, "../../workspace");
+  await Bun.$`cp -r ${templateDir} ${dir}`.quiet();
+
   return dir;
 }
 

@@ -19,7 +19,8 @@ async function main() {
   manager.registerAdapter(new ClaudeCodeAdapter());
 
   // Create a temp project directory for the demo
-  const projectDir = `${process.cwd()}/examples/code-agent/demo-project`;
+  const projectId = Math.random().toString(36).substring(2, 10);
+  const projectDir = `/tmp/code-agent-${projectId}`;
   await Bun.$`mkdir -p ${projectDir}`.quiet();
 
   console.log("🚀 Spawning code agent...");

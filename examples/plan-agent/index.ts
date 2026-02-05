@@ -24,11 +24,17 @@ async function main() {
   const manager = new AgentManager(tmux);
   manager.registerAdapter(new ClaudeCodeAdapter());
 
+  // Create a temp project directory for the demo
+  const projectId = Math.random().toString(36).substring(2, 10);
+  const projectDir = `/tmp/plan-agent-${projectId}`;
+  await Bun.$`mkdir -p ${projectDir}`.quiet();
+
   console.log("🚀 Spawning plan agent...");
+  console.log(`  Workspace: ${projectDir}`);
 
   // Spawn the planner agent
   const planner = await manager.spawn("claude-code", {
-    project: process.cwd(),
+    project: projectDir,
     instructions: PLANNER_INSTRUCTIONS,
   });
 
@@ -51,7 +57,7 @@ async function main() {
 
   // Demo: spawn a worker for the first step
   const worker = await manager.spawn("claude-code", {
-    project: process.cwd(),
+    project: projectDir,
     instructions: "You are a focused implementation agent. Complete assigned tasks concisely.",
   });
 
