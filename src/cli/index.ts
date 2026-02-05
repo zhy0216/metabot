@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
 
 import { runChat, runGateway, runOnboard, runStatus } from "./commands";
+import { runSpawn } from "./commands/spawn";
 
 const args = process.argv.slice(2);
 const command = args[0];
@@ -30,6 +31,10 @@ async function main() {
       await runStatus();
       break;
 
+    case "spawn":
+      await runSpawn(args.slice(1));
+      break;
+
     case "help":
     case "--help":
     case "-h":
@@ -55,6 +60,7 @@ Usage:
 Commands:
   chat              Start interactive chat session
   chat -m "msg"     Send a single message
+  spawn             Spawn an agent in tmux
   gateway           Start all configured channels
   onboard           Set up workspace and config
   status            Show configuration status
@@ -69,6 +75,7 @@ Examples:
   botctl onboard                    # First-time setup
   botctl chat                       # Interactive mode
   botctl chat -m "Hello"            # Single message
+  botctl spawn claude-code --project ./myapp  # Spawn agent
   botctl gateway                    # Run with all channels
 `);
 }
