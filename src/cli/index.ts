@@ -2,6 +2,8 @@
 
 import { runChat, runGateway, runOnboard, runStatus } from "./commands";
 import { runSpawn } from "./commands/spawn";
+import { runSend } from "./commands/send";
+import { runOutput } from "./commands/output";
 
 const args = process.argv.slice(2);
 const command = args[0];
@@ -35,6 +37,14 @@ async function main() {
       await runSpawn(args.slice(1));
       break;
 
+    case "send":
+      await runSend(args.slice(1));
+      break;
+
+    case "output":
+      await runOutput(args.slice(1));
+      break;
+
     case "help":
     case "--help":
     case "-h":
@@ -61,6 +71,8 @@ Commands:
   chat              Start interactive chat session
   chat -m "msg"     Send a single message
   spawn             Spawn an agent in tmux
+  send              Send a prompt to an agent
+  output            Show terminal output from an agent
   gateway           Start all configured channels
   onboard           Set up workspace and config
   status            Show configuration status
@@ -76,6 +88,9 @@ Examples:
   botctl chat                       # Interactive mode
   botctl chat -m "Hello"            # Single message
   botctl spawn claude-code --project ./myapp  # Spawn agent
+  botctl send <agent-id> "Build a todo app"   # Send prompt to agent
+  botctl send --async <agent-id> "Task"       # Send without waiting
+  botctl output <agent-id>                    # View agent output
   botctl gateway                    # Run with all channels
 `);
 }
