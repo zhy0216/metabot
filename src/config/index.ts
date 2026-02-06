@@ -17,7 +17,7 @@ const DEFAULT_CONFIG: Config = {
   tools: {
     exec: { timeout: 30000 },
   },
-  workspace: join(homedir(), ".botctl"),
+  workspace: join(homedir(), ".metabot", "workspace"),
 };
 
 let config: Config | null = null;
@@ -25,7 +25,7 @@ let config: Config | null = null;
 export async function loadConfig(customPath?: string): Promise<Config> {
   if (config) return config;
 
-  const configPath = customPath ?? join(homedir(), ".botctl", "config.json");
+  const configPath = customPath ?? join(homedir(), ".metabot", "config.json");
 
   try {
     const file = Bun.file(configPath);
@@ -53,7 +53,7 @@ function mergeConfig(defaults: Config, loaded: Partial<Config>): Config {
 }
 
 export async function saveConfig(cfg: Config, customPath?: string): Promise<void> {
-  const configPath = customPath ?? join(homedir(), ".botctl", "config.json");
+  const configPath = customPath ?? join(homedir(), ".metabot", "config.json");
   const dir = configPath.substring(0, configPath.lastIndexOf("/"));
 
   await Bun.write(join(dir, ".gitkeep"), ""); // ensure dir exists

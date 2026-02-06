@@ -19,7 +19,6 @@ export async function runChat(message?: string): Promise<void> {
 
   // Spawn a Claude Code agent
   const agent = await manager.spawn("claude-code", {
-    project: process.cwd(),
     model: config.agent.model,
   });
 
@@ -59,7 +58,7 @@ export async function runGateway(): Promise<void> {
 }
 
 export async function runOnboard(): Promise<void> {
-  const workspaceDir = join(homedir(), ".botctl");
+  const workspaceDir = join(homedir(), ".metabot", "workspace");
 
   console.log("Setting up botctl workspace...\n");
 

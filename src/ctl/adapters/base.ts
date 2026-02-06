@@ -1,16 +1,20 @@
 // src/ctl/adapters/base.ts
 import { mkdir } from "node:fs/promises";
 import { join, basename } from "node:path";
+import { homedir } from "node:os";
 
 // Strip ANSI escape codes from terminal output
 export function stripAnsi(str: string): string {
   return str.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, "").replace(/\x1b\][^\x07]*\x07/g, "");
 }
 
-// Create a temp workspace directory from template
+// Create a workspace directory under ~/.metabot/workspace/agents/
 export async function createWorkspaceDir(prefix: string): Promise<string> {
   const id = crypto.randomUUID().slice(0, 8);
-  const dir = join("/tmp", `botctl-${prefix}-${id}`);
+  const agentsDir = join(homedir(), ".metabot", "workspace", "agents");
+  const dir = join(agentsDir, `${prefix}-${id}`);
+
+  await mkdir(agentsDir, { recursive: true });
 
   // Copy workspace template
   const templateDir = join(import.meta.dir, "../../workspace");

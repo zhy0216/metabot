@@ -32,10 +32,9 @@ test("prepareWorkspace creates directory with CLAUDE.md", async () => {
 test("buildLaunchCommand returns claude command", () => {
   const cmd = adapter.buildLaunchCommand({
     workspacePath: "/tmp/test-ws",
-    projectPath: "/home/user/myapp",
   });
   expect(cmd[0]).toBe("claude");
-  expect(cmd).toContain("/home/user/myapp");
+  expect(cmd).toContain("/tmp/test-ws");
 });
 
 test("getReadyPattern matches Claude Code prompt", () => {

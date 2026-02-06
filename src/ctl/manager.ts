@@ -40,7 +40,6 @@ export class AgentManager {
 
     const cmd = adapter.buildLaunchCommand({
       workspacePath,
-      projectPath: config.project,
       model: config.model,
     });
 
@@ -54,7 +53,6 @@ export class AgentManager {
       type,
       sessionName,
       workspacePath,
-      projectPath: config.project,
       status: "idle",
       createdAt: new Date(),
     };

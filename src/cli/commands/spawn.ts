@@ -15,14 +15,7 @@ export function getManager(): AgentManager {
 export async function runSpawn(args: string[]): Promise<void> {
   const type = args[0];
   if (!type) {
-    console.error("Usage: botctl spawn <agent-type> --project <path> [--skill <path>] [--model <model>]");
-    process.exit(1);
-  }
-
-  const projectIdx = args.indexOf("--project");
-  const project = projectIdx !== -1 ? args[projectIdx + 1] : undefined;
-  if (!project) {
-    console.error("--project is required");
+    console.error("Usage: botctl spawn <agent-type> [--skill <path>] [--model <model>]");
     process.exit(1);
   }
 
@@ -41,6 +34,6 @@ export async function runSpawn(args: string[]): Promise<void> {
   const model = modelIdx !== -1 ? args[modelIdx + 1] : undefined;
 
   const manager = getManager();
-  const agent = await manager.spawn(type, { project, skills, model });
+  const agent = await manager.spawn(type, { skills, model });
   console.log(`Spawned ${agent.id} (${agent.type})`);
 }

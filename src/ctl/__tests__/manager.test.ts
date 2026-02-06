@@ -38,13 +38,13 @@ beforeEach(() => {
 });
 
 test("registerAdapter makes type available", () => {
-  expect(() => manager.spawn("nonexistent", { project: "/tmp" })).toThrow();
+  expect(() => manager.spawn("nonexistent", {})).toThrow();
 });
 
 test("spawn creates agent and returns handle", async () => {
   // Simulate ready pattern appearing after launch
   mockTmux.capturePane.mockResolvedValue("Welcome\n$ ");
-  const agent = await manager.spawn("mock", { project: "/tmp/proj" });
+  const agent = await manager.spawn("mock", {});
   expect(agent.id).toBeTruthy();
   expect(agent.type).toBe("mock");
   expect(agent.status).toBe("idle");
@@ -53,14 +53,14 @@ test("spawn creates agent and returns handle", async () => {
 
 test("list returns all agents", async () => {
   mockTmux.capturePane.mockResolvedValue("$ ");
-  await manager.spawn("mock", { project: "/tmp/proj" });
-  await manager.spawn("mock", { project: "/tmp/proj2" });
+  await manager.spawn("mock", {});
+  await manager.spawn("mock", {});
   expect(manager.list().length).toBe(2);
 });
 
 test("kill removes agent", async () => {
   mockTmux.capturePane.mockResolvedValue("$ ");
-  const agent = await manager.spawn("mock", { project: "/tmp/proj" });
+  const agent = await manager.spawn("mock", {});
   await manager.kill(agent.id);
   expect(manager.list().length).toBe(0);
   expect(mockTmux.killSession).toHaveBeenCalled();
@@ -68,7 +68,7 @@ test("kill removes agent", async () => {
 
 test("getStatus returns agent status", async () => {
   mockTmux.capturePane.mockResolvedValue("$ ");
-  const agent = await manager.spawn("mock", { project: "/tmp/proj" });
+  const agent = await manager.spawn("mock", {});
   expect(manager.getStatus(agent.id)).toBe("idle");
 });
 
@@ -77,7 +77,7 @@ test("send injects prompt and returns parsed output", async () => {
     .mockResolvedValueOnce("$ ") // spawn ready check
     .mockResolvedValueOnce("working...") // first poll - no ready pattern
     .mockResolvedValue("The answer is 42\n$ "); // second poll - done
-  const agent = await manager.spawn("mock", { project: "/tmp/proj" });
+  const agent = await manager.spawn("mock", {});
   const result = await manager.send(agent.id, "what is 42?");
   expect(result.text).toContain("42");
   expect(mockTmux.sendKeys).toHaveBeenCalled();

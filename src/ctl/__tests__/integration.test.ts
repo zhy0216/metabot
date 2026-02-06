@@ -42,7 +42,7 @@ afterAll(async () => {
 });
 
 test("full lifecycle: spawn, send, output, kill", async () => {
-  const agent = await manager.spawn("bash-test", { project: "/tmp" });
+  const agent = await manager.spawn("bash-test", {});
   agentId = agent.id;
   expect(agent.status).toBe("idle");
   expect(manager.list().length).toBe(1);

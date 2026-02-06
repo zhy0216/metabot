@@ -41,8 +41,8 @@ export class ClaudeCodeAdapter implements AgentAdapter {
     if (opts.model) {
       cmd.push("--model", opts.model);
     }
-    // Last arg is the project directory
-    cmd.push(opts.projectPath);
+    // Last arg is the workspace directory
+    cmd.push(opts.workspacePath);
     return cmd;
   }
 

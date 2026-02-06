@@ -12,7 +12,6 @@ export interface WorkspaceConfig {
 
 export interface LaunchOptions {
   workspacePath: string;
-  projectPath: string;
   model?: string;
 }
 
@@ -23,7 +22,6 @@ export interface AgentOutput {
 }
 
 export interface SpawnConfig {
-  project: string;
   skills?: string[];
   instructions?: string;
   model?: string;
@@ -35,7 +33,6 @@ export interface AgentHandle {
   type: string;
   sessionName: string;
   workspacePath: string;
-  projectPath: string;
   status: "idle" | "working" | "dead";
   createdAt: Date;
 }
