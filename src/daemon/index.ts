@@ -1,0 +1,10 @@
+// src/daemon/index.ts
+export { DaemonClient } from "./client";
+export {
+  ensureDaemon,
+  isDaemonRunning,
+  daemonStatus,
+  startDaemon,
+  stopDaemon,
+  cleanStaleFiles,
+} from "./lifecycle";

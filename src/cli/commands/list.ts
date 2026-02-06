@@ -1,9 +1,9 @@
 // src/cli/commands/list.ts
-import { getManager } from "./spawn";
+import { ensureDaemon } from "../../daemon/lifecycle";
 
 export async function runList(): Promise<void> {
-  const manager = getManager();
-  const agents = manager.list();
+  const client = await ensureDaemon();
+  const agents = await client.list();
 
   if (agents.length === 0) {
     console.log("No agents running");

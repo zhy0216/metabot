@@ -2,32 +2,25 @@ import { loadConfig, getConfig, saveConfig } from "../config";
 import { join } from "path";
 import { homedir } from "os";
 import { mkdir } from "fs/promises";
+import { ensureDaemon } from "../daemon/lifecycle";
 
 export async function runChat(message?: string): Promise<void> {
   await loadConfig();
-
-  // Import ctl module lazily to avoid circular deps
-  const { TmuxDriver } = await import("../ctl/tmux");
-  const { AgentManager } = await import("../ctl/manager");
-  const { ClaudeCodeAdapter } = await import("../ctl/adapters/claude-code");
-
-  const tmux = new TmuxDriver();
-  const manager = new AgentManager(tmux);
-  manager.registerAdapter(new ClaudeCodeAdapter());
-
   const config = getConfig();
 
+  const client = await ensureDaemon();
+
   // Spawn a Claude Code agent in the persistent workspace
-  const agent = await manager.spawn("claude-code", {
+  const agent = await client.spawn("claude-code", {
     model: config.agent.model,
     workspacePath: config.workspace,
   });
 
   if (message) {
     // Single message mode
-    const response = await manager.send(agent.id, message);
+    const response = await client.send(agent.id, message);
     console.log(response.text);
-    await manager.kill(agent.id);
+    await client.kill(agent.id);
     return;
   }
 
@@ -35,7 +28,7 @@ export async function runChat(message?: string): Promise<void> {
   console.log("Attaching to Claude Code session...");
   console.log("Use Ctrl+B D to detach, or exit Claude Code to end.\n");
 
-  const attachCmd = manager.getAttachCommand(agent.id);
+  const attachCmd = await client.getAttachCommand(agent.id);
   const proc = Bun.spawn(["sh", "-c", attachCmd], {
     stdin: "inherit",
     stdout: "inherit",
@@ -45,7 +38,7 @@ export async function runChat(message?: string): Promise<void> {
 
   // Clean up after detach/exit
   try {
-    await manager.kill(agent.id);
+    await client.kill(agent.id);
   } catch {
     // Session may already be dead
   }

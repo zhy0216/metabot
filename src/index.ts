@@ -9,3 +9,4 @@ export * from "./session";
 export * from "./skills";
 export * from "./channels";
 export * from "./ctl";
+export * from "./daemon";

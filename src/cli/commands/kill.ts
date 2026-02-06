@@ -1,5 +1,5 @@
 // src/cli/commands/kill.ts
-import { getManager } from "./spawn";
+import { ensureDaemon } from "../../daemon/lifecycle";
 
 export async function runKill(args: string[]): Promise<void> {
   const id = args[0];
@@ -8,7 +8,7 @@ export async function runKill(args: string[]): Promise<void> {
     process.exit(1);
   }
 
-  const manager = getManager();
-  await manager.kill(id);
+  const client = await ensureDaemon();
+  await client.kill(id);
   console.log(`Killed ${id}`);
 }

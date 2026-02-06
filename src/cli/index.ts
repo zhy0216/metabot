@@ -8,6 +8,11 @@ import { runList } from "./commands/list";
 import { runKill } from "./commands/kill";
 import { runAttach } from "./commands/attach";
 import { runSkill } from "./commands/skill";
+import {
+  startDaemon,
+  stopDaemon,
+  daemonStatus,
+} from "../daemon/lifecycle";
 
 const args = process.argv.slice(2);
 const command = args[0];
@@ -65,6 +70,10 @@ async function main() {
       await runSkill(args.slice(1));
       break;
 
+    case "daemon":
+      await runDaemon(args.slice(1));
+      break;
+
     case "help":
     case "--help":
     case "-h":
@@ -77,6 +86,39 @@ async function main() {
       }
       printHelp();
       process.exit(command ? 1 : 0);
+  }
+}
+
+async function runDaemon(subargs: string[]) {
+  const sub = subargs[0];
+  switch (sub) {
+    case "start": {
+      const status = await daemonStatus();
+      if (status.running) {
+        console.log(`Daemon already running (pid ${status.pid})`);
+        return;
+      }
+      await startDaemon();
+      const s = await daemonStatus();
+      console.log(`Daemon started (pid ${s.pid})`);
+      break;
+    }
+    case "stop":
+      await stopDaemon();
+      console.log("Daemon stopped");
+      break;
+    case "status": {
+      const status = await daemonStatus();
+      if (status.running) {
+        console.log(`Daemon running (pid ${status.pid}, uptime ${status.uptime}s)`);
+      } else {
+        console.log("Daemon not running");
+      }
+      break;
+    }
+    default:
+      console.error("Usage: botctl daemon <start|stop|status>");
+      process.exit(1);
   }
 }
 
@@ -97,10 +139,16 @@ Commands:
   kill              Terminate an agent
   attach            Attach to agent's tmux session
   skill             Hot-load a skill into an agent
+  daemon            Manage the background daemon
   gateway           Start all configured channels
   onboard           Set up workspace and config
   status            Show configuration status
   help              Show this help message
+
+Daemon:
+  daemon start      Start the daemon process
+  daemon stop       Stop the daemon process
+  daemon status     Show daemon status
 
 Environment:
   ANTHROPIC_API_KEY   Anthropic API key
@@ -119,6 +167,7 @@ Examples:
   botctl kill <agent-id>                      # Kill an agent
   botctl attach <agent-id>                    # Attach to agent session
   botctl skill <agent-id> ./skill.md          # Load skill into agent
+  botctl daemon status                        # Check daemon status
   botctl gateway                    # Run with all channels
 `);
 }

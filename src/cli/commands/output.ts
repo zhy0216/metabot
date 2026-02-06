@@ -1,5 +1,5 @@
 // src/cli/commands/output.ts
-import { getManager } from "./spawn";
+import { ensureDaemon } from "../../daemon/lifecycle";
 
 export async function runOutput(args: string[]): Promise<void> {
   const id = args[0];
@@ -8,7 +8,7 @@ export async function runOutput(args: string[]): Promise<void> {
     process.exit(1);
   }
 
-  const manager = getManager();
-  const output = await manager.getOutput(id);
+  const client = await ensureDaemon();
+  const output = await client.getOutput(id);
   console.log(output);
 }

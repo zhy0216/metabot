@@ -1,18 +1,7 @@
 // src/cli/commands/spawn.ts
-import { AgentManager, TmuxDriver, ClaudeCodeAdapter } from "../../ctl";
 import { loadConfig, getConfig } from "../../config";
+import { ensureDaemon } from "../../daemon/lifecycle";
 import { resolve } from "node:path";
-
-let _manager: AgentManager | null = null;
-
-export function getManager(): AgentManager {
-  if (!_manager) {
-    const tmux = new TmuxDriver();
-    _manager = new AgentManager(tmux);
-    _manager.registerAdapter(new ClaudeCodeAdapter());
-  }
-  return _manager;
-}
 
 export async function runSpawn(args: string[]): Promise<void> {
   const type = args[0];
@@ -46,7 +35,7 @@ export async function runSpawn(args: string[]): Promise<void> {
   const config = getConfig();
   const workspacePath = projectPath ?? config.workspace;
 
-  const manager = getManager();
-  const agent = await manager.spawn(type, { skills, model, workspacePath });
+  const client = await ensureDaemon();
+  const agent = await client.spawn(type, { skills, model, workspacePath });
   console.log(`Spawned ${agent.id} (${agent.type})`);
 }

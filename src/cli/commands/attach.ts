@@ -1,5 +1,5 @@
 // src/cli/commands/attach.ts
-import { getManager } from "./spawn";
+import { ensureDaemon } from "../../daemon/lifecycle";
 
 export async function runAttach(args: string[]): Promise<void> {
   const id = args[0];
@@ -8,8 +8,8 @@ export async function runAttach(args: string[]): Promise<void> {
     process.exit(1);
   }
 
-  const manager = getManager();
-  const cmd = manager.getAttachCommand(id);
+  const client = await ensureDaemon();
+  const cmd = await client.getAttachCommand(id);
   console.log(`Attaching... (detach with Ctrl+B, D)`);
   const proc = Bun.spawn(["sh", "-c", cmd], {
     stdin: "inherit",

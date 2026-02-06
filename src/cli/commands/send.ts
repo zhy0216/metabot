@@ -1,5 +1,5 @@
 // src/cli/commands/send.ts
-import { getManager } from "./spawn";
+import { ensureDaemon } from "../../daemon/lifecycle";
 
 export async function runSend(args: string[]): Promise<void> {
   const isAsync = args[0] === "--async";
@@ -12,13 +12,13 @@ export async function runSend(args: string[]): Promise<void> {
     process.exit(1);
   }
 
-  const manager = getManager();
+  const client = await ensureDaemon();
 
   if (isAsync) {
-    await manager.sendAsync(id, prompt);
+    await client.sendAsync(id, prompt);
     console.log("Prompt sent");
   } else {
-    const result = await manager.send(id, prompt);
+    const result = await client.send(id, prompt);
     if (result.error) {
       console.error(`Error: ${result.error}`);
     } else {

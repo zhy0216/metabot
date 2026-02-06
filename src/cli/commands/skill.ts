@@ -1,5 +1,5 @@
 // src/cli/commands/skill.ts
-import { getManager } from "./spawn";
+import { ensureDaemon } from "../../daemon/lifecycle";
 
 export async function runSkill(args: string[]): Promise<void> {
   const id = args[0];
@@ -9,8 +9,8 @@ export async function runSkill(args: string[]): Promise<void> {
     process.exit(1);
   }
 
-  const manager = getManager();
-  await manager.loadSkill(id, skillPath);
+  const client = await ensureDaemon();
+  await client.loadSkill(id, skillPath);
   const filename = skillPath.split("/").pop();
   console.log(`Loaded ${filename}`);
 }
