@@ -32,11 +32,21 @@ export class AgentManager {
     const id = `agent-${crypto.randomUUID().slice(0, 8)}`;
     const sessionName = `botctl-${id}`;
 
-    const workspacePath = await adapter.prepareWorkspace({
-      skills: config.skills ?? [],
-      instructions: config.instructions,
-      env: config.env,
-    });
+    let workspacePath: string;
+    let persistent = false;
+
+    if (config.workspacePath) {
+      // Use provided workspace directly (persistent, no cleanup)
+      workspacePath = config.workspacePath;
+      persistent = true;
+    } else {
+      // Create a temp workspace via adapter
+      workspacePath = await adapter.prepareWorkspace({
+        skills: config.skills ?? [],
+        instructions: config.instructions,
+        env: config.env,
+      });
+    }
 
     const cmd = adapter.buildLaunchCommand({
       workspacePath,
@@ -53,6 +63,7 @@ export class AgentManager {
       type,
       sessionName,
       workspacePath,
+      persistent,
       status: "idle",
       createdAt: new Date(),
     };
@@ -106,7 +117,9 @@ export class AgentManager {
     const agent = this.getAgent(id);
     const adapter = this.getAdapter(agent.type);
     await this.tmux.killSession(agent.sessionName);
-    await adapter.cleanup(agent.workspacePath);
+    if (!agent.persistent) {
+      await adapter.cleanup(agent.workspacePath);
+    }
     this.agents.delete(id);
   }
 

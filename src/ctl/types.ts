@@ -26,6 +26,7 @@ export interface SpawnConfig {
   instructions?: string;
   model?: string;
   env?: Record<string, string>;
+  workspacePath?: string;
 }
 
 export interface AgentHandle {
@@ -33,6 +34,7 @@ export interface AgentHandle {
   type: string;
   sessionName: string;
   workspacePath: string;
+  persistent: boolean;
   status: "idle" | "working" | "dead";
   createdAt: Date;
 }

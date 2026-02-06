@@ -17,9 +17,10 @@ export async function runChat(message?: string): Promise<void> {
 
   const config = getConfig();
 
-  // Spawn a Claude Code agent
+  // Spawn a Claude Code agent in the persistent workspace
   const agent = await manager.spawn("claude-code", {
     model: config.agent.model,
+    workspacePath: config.workspace,
   });
 
   if (message) {
@@ -68,10 +69,39 @@ export async function runOnboard(): Promise<void> {
     join(workspaceDir, "sessions"),
     join(workspaceDir, "skills"),
     join(workspaceDir, "memory"),
+    join(workspaceDir, "agents"),
   ];
 
   for (const dir of dirs) {
     await mkdir(dir, { recursive: true });
+  }
+
+  // Copy template files from src/workspace/ (skip existing to preserve user edits)
+  const templateDir = join(import.meta.dir, "../workspace");
+  const templateFiles = [
+    "AGENTS.md",
+    "SOUL.md",
+    "USER.md",
+    "TOOLS.md",
+    "HEARTBEAT.md",
+    "memory/MEMORY.md",
+  ];
+
+  const created: string[] = [];
+  const skipped: string[] = [];
+
+  for (const relPath of templateFiles) {
+    const dest = join(workspaceDir, relPath);
+    const destFile = Bun.file(dest);
+    if (await destFile.exists()) {
+      skipped.push(relPath);
+      continue;
+    }
+    const src = Bun.file(join(templateDir, relPath));
+    if (await src.exists()) {
+      await Bun.write(dest, src);
+      created.push(relPath);
+    }
   }
 
   // Create default config
@@ -79,37 +109,19 @@ export async function runOnboard(): Promise<void> {
   const config = getConfig();
   await saveConfig(config);
 
-  // Create default workspace files
-  const agentsContent = `# Agent Instructions
+  console.log("Workspace:", workspaceDir);
+  if (created.length > 0) {
+    console.log("\nCreated:");
+    for (const f of created) console.log(`  ${f}`);
+  }
+  if (skipped.length > 0) {
+    console.log("\nSkipped (already exist):");
+    for (const f of skipped) console.log(`  ${f}`);
+  }
 
-You are a helpful AI assistant. Your capabilities include:
-
-- Reading and writing files
-- Executing shell commands
-- Searching the web
-- Spawning subagents for complex tasks
-
-## Guidelines
-
-- Be concise and helpful
-- Use tools when needed
-- Break complex tasks into smaller steps
-`;
-
-  const soulContent = `# Personality
-
-You are friendly, knowledgeable, and efficient. You aim to help users accomplish their goals with minimal friction.
-`;
-
-  await Bun.write(join(workspaceDir, "AGENTS.md"), agentsContent);
-  await Bun.write(join(workspaceDir, "SOUL.md"), soulContent);
-
-  console.log("✅ Workspace created at:", workspaceDir);
   console.log("\nTo get started:");
-  console.log("  1. Run: botctl spawn");
-  console.log("  2. Run: botctl send <agent-id> 'your message'");
-  console.log("\nOr for interactive mode:");
-  console.log("  Run: bun run chat");
+  console.log("  botctl spawn claude-code");
+  console.log("  botctl spawn claude-code --project ./myapp");
 }
 
 export async function runStatus(): Promise<void> {
