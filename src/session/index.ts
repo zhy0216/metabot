@@ -37,7 +37,7 @@ export class SessionManager {
     const path = this.getSessionPath(sessionId);
     const file = Bun.file(path);
 
-    const [channel, chatId] = sessionId.split(":");
+    const [channel = "", chatId = ""] = sessionId.split(":");
 
     if (!(await file.exists())) {
       return {

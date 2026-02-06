@@ -64,7 +64,7 @@ export class SkillsLoader {
       };
     }
 
-    const [, frontmatter, body] = frontmatterMatch;
+    const [, frontmatter = "", body = ""] = frontmatterMatch;
 
     // Simple YAML parsing for our needs
     const metadata: SkillMetadata = { name: "", description: "" };
