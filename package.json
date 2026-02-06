@@ -14,6 +14,10 @@
     "gateway": "bun run src/cli/index.ts gateway",
     "onboard": "bun run src/cli/index.ts onboard",
     "status": "bun run src/cli/index.ts status",
+    "daemon": "bun run src/daemon/server.ts",
+    "daemon:start": "bun run src/cli/index.ts daemon start",
+    "daemon:stop": "bun run src/cli/index.ts daemon stop",
+    "daemon:status": "bun run src/cli/index.ts daemon status",
     "build": "bun build src/cli/index.ts --outdir dist --target bun",
     "test": "bun test",
     "typecheck": "tsc --noEmit"
