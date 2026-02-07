@@ -20,7 +20,6 @@ const command = args[0];
 async function main() {
   switch (command) {
     case "chat":
-      // Check for -m flag for single message
       const msgIndex = args.indexOf("-m");
       if (msgIndex !== -1 && args[msgIndex + 1]) {
         await runChat(args[msgIndex + 1]);

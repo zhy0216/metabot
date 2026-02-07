@@ -1,4 +1,3 @@
-// src/ctl/__tests__/manager.test.ts
 import { test, expect, beforeEach, mock } from "bun:test";
 import { AgentManager } from "../manager";
 import type { AgentAdapter, AgentOutput, WorkspaceConfig, LaunchOptions } from "../types";

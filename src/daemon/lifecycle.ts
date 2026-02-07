@@ -1,6 +1,3 @@
-// src/daemon/lifecycle.ts — Daemon lifecycle management
-// Provides ensureDaemon(), the single entry point CLI commands use to get a ready DaemonClient.
-
 import { join } from "node:path";
 import { homedir } from "node:os";
 import { DaemonClient } from "./client";
@@ -15,7 +12,7 @@ const STARTUP_TIMEOUT_MS = 10_000;
 const POLL_INTERVAL_MS = 150;
 
 /**
- * Main entry point. Returns a DaemonClient connected to a running daemon.
+ * Returns a DaemonClient connected to a running daemon.
  * Auto-starts the daemon if it's not already running.
  */
 export async function ensureDaemon(): Promise<DaemonClient> {
@@ -31,9 +28,6 @@ export async function ensureDaemon(): Promise<DaemonClient> {
   return client;
 }
 
-/**
- * Checks if the daemon is reachable via its health endpoint.
- */
 export async function isDaemonRunning(
   client?: DaemonClient,
 ): Promise<boolean> {
@@ -46,9 +40,6 @@ export async function isDaemonRunning(
   }
 }
 
-/**
- * Returns daemon status info.
- */
 export async function daemonStatus(): Promise<{
   running: boolean;
   pid?: number;
@@ -63,43 +54,26 @@ export async function daemonStatus(): Promise<{
   }
 }
 
-/**
- * Sends a shutdown request to the daemon.
- */
 export async function stopDaemon(): Promise<void> {
   const client = new DaemonClient(SOCKET_PATH);
   try {
     await client.shutdown();
   } catch {
-    // Already stopped or unreachable — that's fine
   }
 }
 
-/**
- * Spawns the daemon process detached, polls /health until ready.
- */
 export async function startDaemon(): Promise<void> {
   const { mkdir } = await import("node:fs/promises");
   await mkdir(METABOT_DIR, { recursive: true });
 
-  // Resolve the server script path relative to this file
   const serverScript = join(import.meta.dir, "server.ts");
 
-  const env: Record<string, string> = { ...process.env } as Record<
-    string,
-    string
-  >;
-  if (process.env.METABOT_SOCKET) env.METABOT_SOCKET = process.env.METABOT_SOCKET;
-  if (process.env.METABOT_PID) env.METABOT_PID = process.env.METABOT_PID;
-
-  // Spawn detached process
   const proc = Bun.spawn(["bun", serverScript], {
-    env,
+    env: process.env as Record<string, string>,
     stdio: ["ignore", "ignore", "ignore"],
   });
   proc.unref();
 
-  // Poll /health until ready
   const client = new DaemonClient(SOCKET_PATH);
   const deadline = Date.now() + STARTUP_TIMEOUT_MS;
 
@@ -107,9 +81,8 @@ export async function startDaemon(): Promise<void> {
     await Bun.sleep(POLL_INTERVAL_MS);
     try {
       await client.health();
-      return; // Daemon is up
+      return;
     } catch {
-      // Not ready yet
     }
   }
 
@@ -118,9 +91,6 @@ export async function startDaemon(): Promise<void> {
   );
 }
 
-/**
- * Removes stale .sock and .pid files if the PID is no longer alive.
- */
 export async function cleanStaleFiles(): Promise<void> {
   const { readFile, unlink } = await import("node:fs/promises");
 
@@ -128,25 +98,20 @@ export async function cleanStaleFiles(): Promise<void> {
   try {
     pidStr = await readFile(PID_PATH, "utf-8");
   } catch {
-    // No PID file — nothing stale
     return;
   }
 
   const pid = parseInt(pidStr.trim(), 10);
   if (isNaN(pid)) {
-    // Corrupt PID file — remove both
     await unlink(PID_PATH).catch(() => {});
     await unlink(SOCKET_PATH).catch(() => {});
     return;
   }
 
-  // Check if process is alive
   try {
-    process.kill(pid, 0); // Signal 0 = check existence
-    // Process is alive — daemon is actually running, don't clean
+    process.kill(pid, 0);
     return;
   } catch {
-    // Process dead — clean up stale files
     await unlink(PID_PATH).catch(() => {});
     await unlink(SOCKET_PATH).catch(() => {});
   }

@@ -1,5 +1,3 @@
-// src/hooks/types.ts
-
 export type HookEvent = "afterSend" | "afterSpawn" | "beforeKill";
 
 export interface HookContext {

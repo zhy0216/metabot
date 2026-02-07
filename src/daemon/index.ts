@@ -1,4 +1,3 @@
-// src/daemon/index.ts
 export { DaemonClient } from "./client";
 export {
   ensureDaemon,

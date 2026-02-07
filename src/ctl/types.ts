@@ -1,4 +1,3 @@
-// src/ctl/types.ts
 import type { ToolCall } from "../types";
 
 export interface WorkspaceConfig {

@@ -1,4 +1,3 @@
-// src/hooks/__tests__/manager.test.ts
 import { test, expect, mock } from "bun:test";
 import { HookManager } from "../manager";
 import type { Hook, HookContext } from "../types";

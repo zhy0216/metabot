@@ -1,5 +1,3 @@
-// src/ctl/tmux.ts
-
 export class TmuxDriver {
   async createSession(name: string, cmd: string[], cwd: string): Promise<void> {
     const args = ["new-session", "-d", "-s", name, "-c", cwd, ...cmd];
@@ -46,7 +44,6 @@ export class TmuxDriver {
       stderr: "ignore",
     });
     await proc.exited;
-    // Don't throw on error - session may already be dead
   }
 
   getAttachCommand(session: string): string {

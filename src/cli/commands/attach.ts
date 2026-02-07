@@ -1,4 +1,3 @@
-// src/cli/commands/attach.ts
 import { ensureDaemon } from "../../daemon/lifecycle";
 
 export async function runAttach(args: string[]): Promise<void> {

@@ -10,13 +10,6 @@ const DEFAULT_CONFIG: Config = {
     temperature: 0.7,
     maxToolIterations: 25,
   },
-  providers: {},
-  channels: {
-    cli: { enabled: true },
-  },
-  tools: {
-    exec: { timeout: 30000 },
-  },
   workspace: join(homedir(), ".metabot", "workspace"),
 };
 
@@ -45,9 +38,6 @@ export async function loadConfig(customPath?: string): Promise<Config> {
 function mergeConfig(defaults: Config, loaded: Partial<Config>): Config {
   return {
     agent: { ...defaults.agent, ...loaded.agent },
-    providers: { ...defaults.providers, ...loaded.providers },
-    channels: { ...defaults.channels, ...loaded.channels },
-    tools: { ...defaults.tools, ...loaded.tools },
     workspace: loaded.workspace ?? defaults.workspace,
   };
 }

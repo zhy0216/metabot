@@ -1,4 +1,5 @@
-// src/ctl/manager.ts
+import { join } from "node:path";
+import { copySkills } from "./adapters/base";
 import type { TmuxDriver } from "./tmux";
 import type { AgentAdapter, AgentHandle, AgentOutput, SpawnConfig } from "./types";
 import type { HookManager } from "../hooks/manager";
@@ -43,11 +44,9 @@ export class AgentManager {
     let persistent = false;
 
     if (config.workspacePath) {
-      // Use provided workspace directly (persistent, no cleanup)
       workspacePath = config.workspacePath;
       persistent = true;
     } else {
-      // Create a temp workspace via adapter
       workspacePath = await adapter.prepareWorkspace({
         skills: config.skills ?? [],
         instructions: config.instructions,
@@ -62,7 +61,6 @@ export class AgentManager {
 
     await this.tmux.createSession(sessionName, cmd, workspacePath);
 
-    // Wait for agent to be ready
     await this.waitForReady(sessionName, adapter);
 
     const agent: AgentHandle = {
@@ -77,7 +75,6 @@ export class AgentManager {
 
     this.agents.set(id, agent);
 
-    // Emit afterSpawn hook
     this.hookManager?.emit("afterSpawn", {
       agentId: id,
       agentType: type,
@@ -100,7 +97,6 @@ export class AgentManager {
       const raw = await this.waitForReady(agent.sessionName, adapter);
       const output = adapter.parseOutput(raw);
 
-      // Emit afterSend hook (fire-and-forget, don't block return)
       this.hookManager?.emit("afterSend", {
         agentId: id,
         agentType: agent.type,
@@ -136,8 +132,6 @@ export class AgentManager {
 
   async loadSkill(id: string, skillPath: string): Promise<void> {
     const agent = this.getAgent(id);
-    const { copySkills } = await import("./adapters/base");
-    const { join } = await import("node:path");
     await copySkills([skillPath], join(agent.workspacePath, "skills"));
   }
 
@@ -145,7 +139,6 @@ export class AgentManager {
     const agent = this.getAgent(id);
     const adapter = this.getAdapter(agent.type);
 
-    // Emit beforeKill hook (await so hooks can finish before cleanup)
     await this.hookManager?.emit("beforeKill", {
       agentId: id,
       agentType: agent.type,

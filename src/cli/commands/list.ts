@@ -1,4 +1,3 @@
-// src/cli/commands/list.ts
 import { ensureDaemon } from "../../daemon/lifecycle";
 
 export async function runList(): Promise<void> {

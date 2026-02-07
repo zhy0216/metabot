@@ -1,4 +1,3 @@
-// src/ctl/index.ts
 export * from "./types";
 export { TmuxDriver } from "./tmux";
 export { AgentManager } from "./manager";

@@ -1,4 +1,3 @@
-// src/cli/commands/skill.ts
 import { ensureDaemon } from "../../daemon/lifecycle";
 
 export async function runSkill(args: string[]): Promise<void> {

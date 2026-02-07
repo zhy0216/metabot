@@ -1,4 +1,3 @@
-// src/cli/commands/kill.ts
 import { ensureDaemon } from "../../daemon/lifecycle";
 
 export async function runKill(args: string[]): Promise<void> {

@@ -1,4 +1,3 @@
-// src/memory/__tests__/store.test.ts
 import { test, expect, beforeEach } from "bun:test";
 import {
   readSessionMemory,
@@ -13,7 +12,6 @@ import { rm, mkdir } from "node:fs/promises";
 const memoriesDir = getMemoriesDir();
 
 beforeEach(async () => {
-  // Clean up and recreate memories dir
   try {
     await rm(memoriesDir, { recursive: true, force: true });
   } catch {}
@@ -84,7 +82,6 @@ test("listRecentSessions returns files sorted by recency", async () => {
 
   const files = await listRecentSessions(2);
   expect(files.length).toBe(2);
-  // Reverse sorted — newest first
   expect(files[0]).toBe("ccc-20260207.md");
   expect(files[1]).toBe("bbb-20260206.md");
 });

@@ -1,4 +1,3 @@
-// src/ctl/__tests__/tmux.test.ts
 import { test, expect, afterEach } from "bun:test";
 import { TmuxDriver } from "../tmux";
 

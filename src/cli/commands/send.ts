@@ -1,4 +1,3 @@
-// src/cli/commands/send.ts
 import { ensureDaemon } from "../../daemon/lifecycle";
 
 export async function runSend(args: string[]): Promise<void> {

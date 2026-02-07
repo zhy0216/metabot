@@ -1,6 +1,3 @@
-// src/daemon/client.ts — RPC client for the daemon
-// Mirrors AgentManager's API surface, communicating over the Unix socket.
-
 import { join } from "node:path";
 import { homedir } from "node:os";
 import type { AgentHandle, AgentOutput, SpawnConfig } from "../ctl/types";

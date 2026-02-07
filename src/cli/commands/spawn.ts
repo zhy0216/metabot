@@ -1,4 +1,3 @@
-// src/cli/commands/spawn.ts
 import { loadConfig, getConfig } from "../../config";
 import { ensureDaemon } from "../../daemon/lifecycle";
 import { resolve } from "node:path";
@@ -30,7 +29,6 @@ export async function runSpawn(args: string[]): Promise<void> {
     }
   }
 
-  // Determine workspace path: --project flag > config workspace
   await loadConfig();
   const config = getConfig();
   const workspacePath = projectPath ?? config.workspace;

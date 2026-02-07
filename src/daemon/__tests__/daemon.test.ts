@@ -1,11 +1,9 @@
-// src/daemon/__tests__/daemon.test.ts
 import { test, expect, beforeAll, afterAll, beforeEach } from "bun:test";
 import { join } from "node:path";
 import { mkdtemp, rm, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { DaemonClient } from "../client";
 
-// Use isolated paths per test run to avoid conflict with real daemon
 let testDir: string;
 let socketPath: string;
 let pidPath: string;
@@ -16,7 +14,6 @@ beforeAll(async () => {
   socketPath = join(testDir, "daemon.sock");
   pidPath = join(testDir, "daemon.pid");
 
-  // Start the daemon server with test-specific paths
   const serverScript = join(import.meta.dir, "../server.ts");
   serverProc = Bun.spawn(["bun", serverScript], {
     env: {
@@ -28,7 +25,6 @@ beforeAll(async () => {
     stderr: "pipe",
   });
 
-  // Poll until server is ready (up to 5s)
   const client = new DaemonClient(socketPath);
   const deadline = Date.now() + 5000;
   while (Date.now() < deadline) {
@@ -42,7 +38,6 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  // Shut down daemon
   if (serverProc) {
     try {
       const client = new DaemonClient(socketPath);
@@ -52,7 +47,6 @@ afterAll(async () => {
       serverProc.kill();
     }
   }
-  // Cleanup test directory
   await rm(testDir, { recursive: true, force: true }).catch(() => {});
 });
 
@@ -71,7 +65,6 @@ test("PID file is written correctly", async () => {
   const pid = parseInt(pidStr.trim(), 10);
   expect(pid).toBeGreaterThan(0);
 
-  // PID should match what health reports
   const client = new DaemonClient(socketPath);
   const health = await client.health();
   expect(health.pid).toBe(pid);
@@ -138,7 +131,5 @@ test("DaemonClient revives Date objects in agent handles", async () => {
   // Test date serialization by checking list (even though empty)
   const client = new DaemonClient(socketPath);
   const agents = await client.list();
-  // If there were agents, their createdAt should be Date objects
-  // Since no agents are spawned, just verify the client is working
   expect(agents).toEqual([]);
 });

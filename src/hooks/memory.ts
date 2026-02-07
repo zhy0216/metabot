@@ -1,5 +1,3 @@
-// src/hooks/memory.ts
-
 import type { Hook, HookContext } from "./types";
 import type { AgentAdapter } from "../ctl/types";
 import {
@@ -31,17 +29,14 @@ export function createMemoryHook(
         hour12: false,
       });
 
-      // Append a placeholder interaction first
       await appendInteraction(sessionId, now, {
         time,
         prompt: ctx.prompt.slice(0, 200),
         summary: "(summarizing...)",
       });
 
-      // Update last response time
       await updateLastResponseTime(ctx.agentId, now);
 
-      // Async summarize — don't block the main flow
       const adapter = getAdapter(ctx.agentType);
       const existingMemory = await readSessionMemory(sessionId, date);
 
@@ -58,7 +53,6 @@ export function createMemoryHook(
         }
       } catch (err) {
         console.error(`[memory] summarize failed:`, err);
-        // Keep the placeholder — better than nothing
       }
     },
   };

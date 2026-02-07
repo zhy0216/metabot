@@ -1,7 +1,3 @@
-// src/daemon/server.ts — Daemon entry point
-// Runs a single long-lived process that owns the AgentManager singleton.
-// Listens on a Unix domain socket for REST-style requests from CLI clients.
-
 import { join } from "node:path";
 import { homedir } from "node:os";
 import { TmuxDriver } from "../ctl/tmux";
@@ -17,12 +13,9 @@ export const PID_PATH =
 
 const startTime = Date.now();
 
-// --- Singleton AgentManager ---
 const tmux = new TmuxDriver();
 const manager = new AgentManager(tmux);
 manager.registerAdapter(new ClaudeCodeAdapter());
-
-// --- Helpers ---
 
 function json(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -44,12 +37,9 @@ async function body(req: Request): Promise<Record<string, unknown>> {
 }
 
 function agentIdFromPath(path: string): string | null {
-  // Match /agents/:id or /agents/:id/action
   const m = path.match(/^\/agents\/([^/]+)/);
   return m?.[1] ?? null;
 }
-
-// --- Route handler ---
 
 async function handleRequest(req: Request): Promise<Response> {
   const url = new URL(req.url, "http://localhost");
@@ -141,9 +131,7 @@ async function handleRequest(req: Request): Promise<Response> {
 
     // POST /shutdown
     if (method === "POST" && path === "/shutdown") {
-      // Graceful shutdown: kill all agents, then exit
-      const agents = manager.list();
-      for (const a of agents) {
+      for (const a of manager.list()) {
         try {
           await manager.kill(a.id);
         } catch {
@@ -162,8 +150,6 @@ async function handleRequest(req: Request): Promise<Response> {
   }
 }
 
-// --- Cleanup ---
-
 async function cleanup() {
   try {
     const { unlink } = await import("node:fs/promises");
@@ -174,42 +160,24 @@ async function cleanup() {
   }
 }
 
-// --- Signal handlers ---
-
-process.on("SIGTERM", async () => {
-  const agents = manager.list();
-  for (const a of agents) {
+async function gracefulShutdown() {
+  for (const a of manager.list()) {
     try {
       await manager.kill(a.id);
     } catch {}
   }
   await cleanup();
   process.exit(0);
-});
+}
 
-process.on("SIGINT", async () => {
-  const agents = manager.list();
-  for (const a of agents) {
-    try {
-      await manager.kill(a.id);
-    } catch {}
-  }
-  await cleanup();
-  process.exit(0);
-});
-
-// --- Start server ---
+process.on("SIGTERM", gracefulShutdown);
+process.on("SIGINT", gracefulShutdown);
 
 async function start() {
   const { mkdir, writeFile, unlink } = await import("node:fs/promises");
 
-  // Ensure directory exists
   await mkdir(METABOT_DIR, { recursive: true });
-
-  // Remove stale socket if it exists
   await unlink(SOCKET_PATH).catch(() => {});
-
-  // Write PID file
   await writeFile(PID_PATH, String(process.pid));
 
   const server = Bun.serve({
@@ -223,7 +191,6 @@ async function start() {
   return server;
 }
 
-// Run if executed directly
 start().catch((e) => {
   console.error("Failed to start daemon:", e.message);
   process.exit(1);

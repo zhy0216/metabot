@@ -1,4 +1,3 @@
-// src/ctl/__tests__/integration.test.ts
 import { test, expect, afterAll } from "bun:test";
 import { AgentManager } from "../manager";
 import { TmuxDriver } from "../tmux";

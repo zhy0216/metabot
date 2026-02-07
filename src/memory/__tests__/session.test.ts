@@ -1,4 +1,3 @@
-// src/memory/__tests__/session.test.ts
 import { test, expect, beforeEach } from "bun:test";
 import { getOrCreateSession, updateLastResponseTime, clearSession } from "../session";
 import { join } from "node:path";
@@ -8,7 +7,6 @@ import { rm } from "node:fs/promises";
 const sessionsPath = join(homedir(), ".metabot", "sessions.json");
 
 beforeEach(async () => {
-  // Clean up sessions file before each test
   try {
     await rm(sessionsPath, { force: true });
   } catch {}
@@ -26,7 +24,6 @@ test("getOrCreateSession returns same session within timeout", async () => {
   const first = await getOrCreateSession("test-agent-2", now);
   expect(first.isNew).toBe(true);
 
-  // 10 minutes later — still same session
   const second = await getOrCreateSession("test-agent-2", now + 10 * 60 * 1000);
   expect(second.isNew).toBe(false);
   expect(second.sessionId).toBe(first.sessionId);
@@ -36,7 +33,6 @@ test("getOrCreateSession creates new session after timeout", async () => {
   const now = Date.now();
   const first = await getOrCreateSession("test-agent-3", now);
 
-  // 31 minutes later — new session
   const second = await getOrCreateSession("test-agent-3", now + 31 * 60 * 1000);
   expect(second.isNew).toBe(true);
   expect(second.sessionId).not.toBe(first.sessionId);
@@ -46,10 +42,8 @@ test("updateLastResponseTime extends session window", async () => {
   const now = Date.now();
   const first = await getOrCreateSession("test-agent-4", now);
 
-  // Update response time at +20min
   await updateLastResponseTime("test-agent-4", now + 20 * 60 * 1000);
 
-  // Check at +45min from original (but only 25min from last response)
   const second = await getOrCreateSession("test-agent-4", now + 45 * 60 * 1000);
   expect(second.isNew).toBe(false);
   expect(second.sessionId).toBe(first.sessionId);

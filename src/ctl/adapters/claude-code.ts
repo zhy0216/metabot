@@ -1,4 +1,3 @@
-// src/ctl/adapters/claude-code.ts
 import { join } from "node:path";
 import { rm } from "node:fs/promises";
 import type {
@@ -16,17 +15,14 @@ export class ClaudeCodeAdapter implements AgentAdapter {
   async prepareWorkspace(config: WorkspaceConfig): Promise<string> {
     const dir = await createWorkspaceDir("claude");
 
-    // Copy skills
     if (config.skills && config.skills.length > 0) {
       await copySkills(config.skills, join(dir, "skills"));
     }
 
-    // Write CLAUDE.md instructions
     if (config.instructions) {
       await Bun.write(join(dir, "CLAUDE.md"), config.instructions);
     }
 
-    // Write .claude/settings.json for mcps, tools, and plugins
     if (config.mcps || config.tools || config.plugins) {
       const settingsDir = join(dir, ".claude");
       await Bun.write(
@@ -47,7 +43,6 @@ export class ClaudeCodeAdapter implements AgentAdapter {
     if (opts.model) {
       cmd.push("--model", opts.model);
     }
-    // Last arg is the workspace directory
     cmd.push(opts.workspacePath);
     return cmd;
   }
@@ -62,7 +57,6 @@ export class ClaudeCodeAdapter implements AgentAdapter {
 
   parseOutput(raw: string): AgentOutput {
     const clean = stripAnsi(raw);
-    // Remove trailing prompt marker
     const text = clean.replace(/>\s*$/m, "").trim();
     return { text };
   }

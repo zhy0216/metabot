@@ -1,5 +1,3 @@
-// src/memory/store.ts
-
 import { join } from "node:path";
 import { homedir } from "node:os";
 import { readdir } from "node:fs/promises";
@@ -10,11 +8,11 @@ export interface Interaction {
   summary: string;
 }
 
-function getMemoriesDir(): string {
+export function getMemoriesDir(): string {
   return join(homedir(), ".metabot", "workspace", "memories");
 }
 
-function formatDate(timestamp: number): string {
+export function formatDate(timestamp: number): string {
   const d = new Date(timestamp);
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
@@ -37,7 +35,6 @@ export async function readSessionMemory(
       return await file.text();
     }
   } catch {
-    // ignore
   }
   return "";
 }
@@ -60,7 +57,6 @@ export async function appendInteraction(
   const existing = await readSessionMemory(sessionId, date);
 
   if (!existing) {
-    // Create new session file
     const d = new Date(timestamp);
     const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
     const content = `# Session ${sessionId} — ${dateStr}
@@ -78,11 +74,9 @@ export async function appendInteraction(
     return;
   }
 
-  // Append to existing — insert before "## Key Decisions"
   const marker = "## Key Decisions";
   const idx = existing.indexOf(marker);
   if (idx === -1) {
-    // Fallback: just append
     const entry = `
 ### ${interaction.time}
 **Prompt:** ${interaction.prompt}
@@ -126,11 +120,8 @@ export async function loadRecentMemories(limit: number = 5): Promise<string> {
       const content = await Bun.file(join(dir, file)).text();
       parts.push(content);
     } catch {
-      // skip
     }
   }
 
   return parts.join("\n---\n\n");
 }
-
-export { formatDate, getMemoriesDir };

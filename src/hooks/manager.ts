@@ -1,5 +1,3 @@
-// src/hooks/manager.ts
-
 import type { Hook, HookEvent, HookContext } from "./types";
 
 export class HookManager {

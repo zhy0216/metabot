@@ -1,5 +1,3 @@
-// src/memory/session.ts
-
 import { join } from "node:path";
 import { homedir } from "node:os";
 
@@ -27,7 +25,6 @@ async function loadSessions(): Promise<SessionsState> {
       return await file.json();
     }
   } catch {
-    // ignore
   }
   return { active: {} };
 }
@@ -51,7 +48,6 @@ export async function getOrCreateSession(
     return { sessionId: existing.sessionId, isNew: false };
   }
 
-  // New session
   const sessionId = generateSessionId();
   state.active[agentId] = {
     sessionId,

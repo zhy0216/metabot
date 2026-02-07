@@ -11,7 +11,6 @@ export async function runChat(message?: string): Promise<void> {
 
   const client = await ensureDaemon();
 
-  // Spawn a Claude Code agent in the persistent workspace
   const agent = await client.spawn("claude-code", {
     model: config.agent.model,
     workspacePath: config.workspace,
@@ -25,7 +24,6 @@ export async function runChat(message?: string): Promise<void> {
     return;
   }
 
-  // Interactive TUI mode
   console.log(`botctl chat  (model: ${config.agent.model})`);
   console.log("Type /exit or Ctrl+C to quit.\n");
 
@@ -40,7 +38,6 @@ export async function runChat(message?: string): Promise<void> {
     try {
       await client.kill(agent.id);
     } catch {
-      // Session may already be dead
     }
   };
 
@@ -89,7 +86,6 @@ export async function runOnboard(): Promise<void> {
 
   console.log("Setting up botctl workspace...\n");
 
-  // Create directories
   const dirs = [
     workspaceDir,
     join(workspaceDir, "sessions"),
@@ -102,7 +98,6 @@ export async function runOnboard(): Promise<void> {
     await mkdir(dir, { recursive: true });
   }
 
-  // Copy template files from src/workspace/ (skip existing to preserve user edits)
   const templateDir = join(import.meta.dir, "../workspace");
   const templateFiles = [
     "AGENTS.md",
@@ -130,7 +125,6 @@ export async function runOnboard(): Promise<void> {
     }
   }
 
-  // Create default config
   await loadConfig();
   const config = getConfig();
   await saveConfig(config);
@@ -158,7 +152,6 @@ export async function runStatus(): Promise<void> {
   console.log("Workspace:", config.workspace);
   console.log("Model:", config.agent.model);
 
-  // Check for tmux
   const tmuxCheck = Bun.spawn(["which", "tmux"], { stdout: "pipe" });
   const tmuxPath = await new Response(tmuxCheck.stdout).text();
 
@@ -168,7 +161,6 @@ export async function runStatus(): Promise<void> {
     console.log("\n❌ tmux not found - required for agent management");
   }
 
-  // Check for claude CLI
   const claudeCheck = Bun.spawn(["which", "claude"], { stdout: "pipe" });
   const claudePath = await new Response(claudeCheck.stdout).text();
 

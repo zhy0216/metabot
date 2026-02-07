@@ -1,4 +1,3 @@
-// src/ctl/__tests__/claude-code-adapter.test.ts
 import { test, expect, afterEach } from "bun:test";
 import { ClaudeCodeAdapter } from "../adapters/claude-code";
 import { existsSync } from "node:fs";
@@ -61,24 +60,19 @@ test("cleanup removes workspace directory", async () => {
   workspacePath = null; // already cleaned
 });
 
-// Integration tests for prepareWorkspace
-
 test("prepareWorkspace copies workspace template files", async () => {
   workspacePath = await adapter.prepareWorkspace({});
 
-  // Verify template files are copied
   const expectedFiles = ["AGENTS.md", "HEARTBEAT.md", "SOUL.md", "TOOLS.md", "USER.md"];
   for (const file of expectedFiles) {
     const f = Bun.file(`${workspacePath}/${file}`);
     expect(await f.exists()).toBe(true);
   }
 
-  // Verify memory directory exists
   expect(existsSync(`${workspacePath}/memory`)).toBe(true);
 });
 
 test("prepareWorkspace copies skills to skills/ directory", async () => {
-  // Create a temporary skill file
   const tempSkillPath = `/tmp/test-skill-${crypto.randomUUID().slice(0, 8)}.md`;
   await Bun.write(tempSkillPath, "# Test Skill\nThis is a test skill.");
 
@@ -87,10 +81,8 @@ test("prepareWorkspace copies skills to skills/ directory", async () => {
       skills: [tempSkillPath],
     });
 
-    // Verify skills directory exists
     expect(existsSync(`${workspacePath}/skills`)).toBe(true);
 
-    // Verify skill file was copied
     const copiedSkill = Bun.file(`${workspacePath}/skills/${tempSkillPath.split("/").pop()}`);
     expect(await copiedSkill.exists()).toBe(true);
     expect(await copiedSkill.text()).toBe("# Test Skill\nThis is a test skill.");
@@ -136,7 +128,6 @@ test("prepareWorkspace creates .claude/settings.json with plugins", async () => 
 });
 
 test("prepareWorkspace creates complete workspace with all config options", async () => {
-  // Create temp skill files
   const skill1Path = `/tmp/skill1-${crypto.randomUUID().slice(0, 8)}.md`;
   const skill2Path = `/tmp/skill2-${crypto.randomUUID().slice(0, 8)}.md`;
   await Bun.write(skill1Path, "# Skill 1");
@@ -151,19 +142,15 @@ test("prepareWorkspace creates complete workspace with all config options", asyn
       plugins: ["my-plugin"],
     });
 
-    // Verify template files
     expect(await Bun.file(`${workspacePath}/AGENTS.md`).exists()).toBe(true);
     expect(await Bun.file(`${workspacePath}/TOOLS.md`).exists()).toBe(true);
 
-    // Verify CLAUDE.md
     const claudeMd = await Bun.file(`${workspacePath}/CLAUDE.md`).text();
     expect(claudeMd).toBe("You are an expert assistant.");
 
-    // Verify skills copied
     expect(await Bun.file(`${workspacePath}/skills/${skill1Path.split("/").pop()}`).exists()).toBe(true);
     expect(await Bun.file(`${workspacePath}/skills/${skill2Path.split("/").pop()}`).exists()).toBe(true);
 
-    // Verify settings.json
     const settings = await Bun.file(`${workspacePath}/.claude/settings.json`).json();
     expect(settings.mcpServers).toEqual(["pencil-mcp"]);
     expect(settings.allowedTools).toEqual(["Read", "Write"]);
@@ -179,10 +166,8 @@ test("prepareWorkspace skips non-existent skill files", async () => {
     skills: ["/tmp/non-existent-skill-file-12345.md"],
   });
 
-  // Skills directory should still be created
   expect(existsSync(`${workspacePath}/skills`)).toBe(true);
 
-  // But no file should be copied
   const skillsDir = await Bun.$`ls ${workspacePath}/skills 2>/dev/null || echo ""`.text();
   expect(skillsDir.trim()).toBe("");
 });
