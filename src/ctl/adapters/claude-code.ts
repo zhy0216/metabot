@@ -68,7 +68,10 @@ export class ClaudeCodeAdapter implements AgentAdapter {
     } else {
       text = clean;
     }
-    text = text.replace(/>\s*$/m, "").trim();
+    // Strip Claude Code UI chrome: find the prompt block (────────────────────────────────────────────────────────────────────────────────\n❯\n───) and remove it and everything after
+    const promptIdx = text.search(/─{3,}\n❯\s*\n─{3,}/);
+    if (promptIdx !== -1) text = text.slice(0, promptIdx);
+    text = text.trim();
     return { text };
   }
 
