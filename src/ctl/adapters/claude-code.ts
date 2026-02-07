@@ -1,7 +1,13 @@
 // src/ctl/adapters/claude-code.ts
 import { join } from "node:path";
 import { rm } from "node:fs/promises";
-import type { AgentAdapter, WorkspaceConfig, LaunchOptions, AgentOutput } from "../types";
+import type {
+  AgentAdapter,
+  WorkspaceConfig,
+  LaunchOptions,
+  AgentOutput,
+  SummarizeContext,
+} from "../types";
 import { stripAnsi, createWorkspaceDir, copySkills } from "./base";
 
 export class ClaudeCodeAdapter implements AgentAdapter {
@@ -63,5 +69,48 @@ export class ClaudeCodeAdapter implements AgentAdapter {
 
   async cleanup(workspacePath: string): Promise<void> {
     await rm(workspacePath, { recursive: true, force: true });
+  }
+
+  async summarizeMemory(ctx: SummarizeContext): Promise<string> {
+    const systemPrompt = [
+      "You are a memory summarizer for an AI agent.",
+      "Given a user prompt and agent output from a conversation turn,",
+      "update the session memory file.",
+      "",
+      "Rules:",
+      "- Add a new entry under ## Interactions with time, prompt summary, and output summary",
+      "- Update ## Key Decisions if any architectural or tool choices were made",
+      "- Update ## Lessons Learned if any reusable insights emerged",
+      "- Keep entries concise (1-2 sentences each)",
+      "- Preserve all existing content, only append/update",
+      "- Output the complete updated memory file content",
+    ].join("\n");
+
+    const userPrompt = [
+      "## Current session memory file:",
+      ctx.existingMemory || "(empty — create new file)",
+      "",
+      "## This turn:",
+      `**User prompt:** ${ctx.prompt}`,
+      "",
+      `**Agent output:** ${ctx.output.slice(0, 4000)}`,
+      "",
+      "Output the updated memory file:",
+    ].join("\n");
+
+    const proc = Bun.spawn(
+      ["claude", "--print", "--model", "claude-haiku-4-5-20251001", "-p", userPrompt, "--system-prompt", systemPrompt],
+      { stdout: "pipe", stderr: "pipe" },
+    );
+
+    const text = await new Response(proc.stdout).text();
+    const exitCode = await proc.exited;
+
+    if (exitCode !== 0) {
+      const stderr = await new Response(proc.stderr).text();
+      throw new Error(`summarizer failed (exit ${exitCode}): ${stderr}`);
+    }
+
+    return text.trim();
   }
 }

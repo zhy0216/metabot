@@ -39,6 +39,13 @@ export interface AgentHandle {
   createdAt: Date;
 }
 
+export interface SummarizeContext {
+  prompt: string;
+  output: string;
+  existingMemory: string;
+  sessionId: string;
+}
+
 export interface AgentAdapter {
   readonly type: string;
   prepareWorkspace(config: WorkspaceConfig): Promise<string>;
@@ -47,4 +54,5 @@ export interface AgentAdapter {
   getReadyPattern(): RegExp;
   parseOutput(raw: string): AgentOutput;
   cleanup(workspacePath: string): Promise<void>;
+  summarizeMemory(ctx: SummarizeContext): Promise<string>;
 }

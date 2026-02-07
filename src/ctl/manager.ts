@@ -1,21 +1,28 @@
 // src/ctl/manager.ts
 import type { TmuxDriver } from "./tmux";
 import type { AgentAdapter, AgentHandle, AgentOutput, SpawnConfig } from "./types";
+import type { HookManager } from "../hooks/manager";
 
 export class AgentManager {
   private agents: Map<string, AgentHandle> = new Map();
   private adapters: Map<string, AgentAdapter> = new Map();
   private tmux: TmuxDriver;
+  private hookManager?: HookManager;
 
-  constructor(tmux: TmuxDriver) {
+  constructor(tmux: TmuxDriver, hookManager?: HookManager) {
     this.tmux = tmux;
+    this.hookManager = hookManager;
+  }
+
+  setHookManager(hm: HookManager): void {
+    this.hookManager = hm;
   }
 
   registerAdapter(adapter: AgentAdapter): void {
     this.adapters.set(adapter.type, adapter);
   }
 
-  private getAdapter(type: string): AgentAdapter {
+  getAdapter(type: string): AgentAdapter {
     const adapter = this.adapters.get(type);
     if (!adapter) throw new Error(`Unknown agent type: ${type}`);
     return adapter;
@@ -69,6 +76,15 @@ export class AgentManager {
     };
 
     this.agents.set(id, agent);
+
+    // Emit afterSpawn hook
+    this.hookManager?.emit("afterSpawn", {
+      agentId: id,
+      agentType: type,
+      workspacePath,
+      timestamp: Date.now(),
+    });
+
     return agent;
   }
 
@@ -82,7 +98,19 @@ export class AgentManager {
       await this.tmux.sendKeys(agent.sessionName, formatted);
 
       const raw = await this.waitForReady(agent.sessionName, adapter);
-      return adapter.parseOutput(raw);
+      const output = adapter.parseOutput(raw);
+
+      // Emit afterSend hook (fire-and-forget, don't block return)
+      this.hookManager?.emit("afterSend", {
+        agentId: id,
+        agentType: agent.type,
+        workspacePath: agent.workspacePath,
+        timestamp: Date.now(),
+        prompt,
+        output: output.text,
+      });
+
+      return output;
     } finally {
       agent.status = "idle";
     }
@@ -116,6 +144,15 @@ export class AgentManager {
   async kill(id: string): Promise<void> {
     const agent = this.getAgent(id);
     const adapter = this.getAdapter(agent.type);
+
+    // Emit beforeKill hook (await so hooks can finish before cleanup)
+    await this.hookManager?.emit("beforeKill", {
+      agentId: id,
+      agentType: agent.type,
+      workspacePath: agent.workspacePath,
+      timestamp: Date.now(),
+    });
+
     await this.tmux.killSession(agent.sessionName);
     if (!agent.persistent) {
       await adapter.cleanup(agent.workspacePath);

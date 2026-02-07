@@ -27,6 +27,9 @@ const bashAdapter: AgentAdapter = {
   async cleanup(workspacePath: string) {
     await Bun.spawn(["rm", "-rf", workspacePath]).exited;
   },
+  async summarizeMemory() {
+    return "";
+  },
 };
 
 const tmux = new TmuxDriver();

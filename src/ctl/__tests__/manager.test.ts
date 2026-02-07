@@ -12,6 +12,7 @@ const mockAdapter: AgentAdapter = {
   getReadyPattern: () => /\$\s*$/m,
   parseOutput: (raw: string) => ({ text: raw.trim() }),
   cleanup: async () => {},
+  summarizeMemory: async () => "",
 };
 
 // Mock tmux driver
