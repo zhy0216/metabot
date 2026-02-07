@@ -17,15 +17,8 @@ const tmux = new TmuxDriver();
 const manager = new AgentManager(tmux);
 manager.registerAdapter(new ClaudeCodeAdapter());
 
-function json(data: unknown, status = 200) {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: { "Content-Type": "application/json" },
-  });
-}
-
 function err(message: string, status = 400) {
-  return json({ error: message }, status);
+  return Response.json({ error: message }, { status });
 }
 
 async function body(req: Request): Promise<Record<string, unknown>> {
@@ -33,120 +26,6 @@ async function body(req: Request): Promise<Record<string, unknown>> {
     return (await req.json()) as Record<string, unknown>;
   } catch {
     return {};
-  }
-}
-
-function agentIdFromPath(path: string): string | null {
-  const m = path.match(/^\/agents\/([^/]+)/);
-  return m?.[1] ?? null;
-}
-
-async function handleRequest(req: Request): Promise<Response> {
-  const url = new URL(req.url, "http://localhost");
-  const path = url.pathname;
-  const method = req.method;
-
-  try {
-    // GET /health
-    if (method === "GET" && path === "/health") {
-      return json({
-        status: "ok",
-        pid: process.pid,
-        uptime: Math.round((Date.now() - startTime) / 1000),
-      });
-    }
-
-    // POST /agents — spawn
-    if (method === "POST" && path === "/agents") {
-      const b = await body(req);
-      const type = b.type as string;
-      if (!type) return err("Missing 'type' field");
-      const config: SpawnConfig = {
-        skills: b.skills as string[] | undefined,
-        instructions: b.instructions as string | undefined,
-        model: b.model as string | undefined,
-        env: b.env as Record<string, string> | undefined,
-        workspacePath: b.workspacePath as string | undefined,
-      };
-      const agent = await manager.spawn(type, config);
-      return json(agent);
-    }
-
-    // GET /agents — list
-    if (method === "GET" && path === "/agents") {
-      return json(manager.list());
-    }
-
-    // Routes with :id
-    const id = agentIdFromPath(path);
-    if (id) {
-      const subpath = path.slice(`/agents/${id}`.length);
-
-      // GET /agents/:id/status
-      if (method === "GET" && subpath === "/status") {
-        return json({ status: manager.getStatus(id) });
-      }
-
-      // GET /agents/:id/output
-      if (method === "GET" && subpath === "/output") {
-        const output = await manager.getOutput(id);
-        return json({ output });
-      }
-
-      // GET /agents/:id/attach
-      if (method === "GET" && subpath === "/attach") {
-        const command = manager.getAttachCommand(id);
-        return json({ command });
-      }
-
-      // POST /agents/:id/send
-      if (method === "POST" && subpath === "/send") {
-        const b = await body(req);
-        const prompt = b.prompt as string;
-        if (!prompt) return err("Missing 'prompt' field");
-        const async_ = b.async === true;
-        if (async_) {
-          await manager.sendAsync(id, prompt);
-          return json({ sent: true });
-        }
-        const result = await manager.send(id, prompt);
-        return json(result);
-      }
-
-      // POST /agents/:id/skill
-      if (method === "POST" && subpath === "/skill") {
-        const b = await body(req);
-        const skillPath = b.skillPath as string;
-        if (!skillPath) return err("Missing 'skillPath' field");
-        await manager.loadSkill(id, skillPath);
-        return json({ loaded: true });
-      }
-
-      // DELETE /agents/:id
-      if (method === "DELETE" && (subpath === "" || subpath === "/")) {
-        await manager.kill(id);
-        return json({ killed: true });
-      }
-    }
-
-    // POST /shutdown
-    if (method === "POST" && path === "/shutdown") {
-      for (const a of manager.list()) {
-        try {
-          await manager.kill(a.id);
-        } catch {
-          // best-effort
-        }
-      }
-      // Schedule exit after response is sent
-      setTimeout(() => cleanup().then(() => process.exit(0)), 100);
-      return json({ status: "shutting_down" });
-    }
-
-    return err("Not found", 404);
-  } catch (e: unknown) {
-    const message = e instanceof Error ? e.message : String(e);
-    return err(message, 500);
   }
 }
 
@@ -182,7 +61,105 @@ async function start() {
 
   const server = Bun.serve({
     unix: SOCKET_PATH,
-    fetch: handleRequest,
+
+    routes: {
+      "/health": {
+        GET: () =>
+          Response.json({
+            status: "ok",
+            pid: process.pid,
+            uptime: Math.round((Date.now() - startTime) / 1000),
+          }),
+      },
+
+      "/agents": {
+        GET: () => Response.json(manager.list()),
+        POST: async (req) => {
+          const b = await body(req);
+          const type = b.type as string;
+          if (!type) return err("Missing 'type' field");
+          const config: SpawnConfig = {
+            skills: b.skills as string[] | undefined,
+            instructions: b.instructions as string | undefined,
+            model: b.model as string | undefined,
+            env: b.env as Record<string, string> | undefined,
+            workspacePath: b.workspacePath as string | undefined,
+          };
+          const agent = await manager.spawn(type, config);
+          return Response.json(agent);
+        },
+      },
+
+      "/agents/:id/status": {
+        GET: (req) =>
+          Response.json({ status: manager.getStatus(req.params.id) }),
+      },
+
+      "/agents/:id/output": {
+        GET: async (req) => {
+          const output = await manager.getOutput(req.params.id);
+          return Response.json({ output });
+        },
+      },
+
+      "/agents/:id/attach": {
+        GET: (req) =>
+          Response.json({ command: manager.getAttachCommand(req.params.id) }),
+      },
+
+      "/agents/:id/send": {
+        POST: async (req) => {
+          const b = await body(req);
+          const prompt = b.prompt as string;
+          if (!prompt) return err("Missing 'prompt' field");
+          if (b.async === true) {
+            await manager.sendAsync(req.params.id, prompt);
+            return Response.json({ sent: true });
+          }
+          const result = await manager.send(req.params.id, prompt);
+          return Response.json(result);
+        },
+      },
+
+      "/agents/:id/skill": {
+        POST: async (req) => {
+          const b = await body(req);
+          const skillPath = b.skillPath as string;
+          if (!skillPath) return err("Missing 'skillPath' field");
+          await manager.loadSkill(req.params.id, skillPath);
+          return Response.json({ loaded: true });
+        },
+      },
+
+      "/agents/:id": {
+        DELETE: async (req) => {
+          await manager.kill(req.params.id);
+          return Response.json({ killed: true });
+        },
+      },
+
+      "/shutdown": {
+        POST: async () => {
+          for (const a of manager.list()) {
+            try {
+              await manager.kill(a.id);
+            } catch {
+              // best-effort
+            }
+          }
+          setTimeout(() => cleanup().then(() => process.exit(0)), 100);
+          return Response.json({ status: "shutting_down" });
+        },
+      },
+    },
+
+    fetch(req) {
+      return err("Not found", 404);
+    },
+
+    error(e) {
+      return err(e instanceof Error ? e.message : String(e), 500);
+    },
   });
 
   console.log(`metabot daemon started (pid ${process.pid})`);
