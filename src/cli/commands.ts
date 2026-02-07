@@ -2,6 +2,7 @@ import { loadConfig, getConfig, saveConfig } from "../config";
 import { join } from "path";
 import { homedir } from "os";
 import { mkdir } from "fs/promises";
+import { createInterface } from "readline";
 import { ensureDaemon } from "../daemon/lifecycle";
 
 export async function runChat(message?: string): Promise<void> {
@@ -24,24 +25,56 @@ export async function runChat(message?: string): Promise<void> {
     return;
   }
 
-  // Interactive mode - attach to the tmux session
-  console.log("Attaching to Claude Code session...");
-  console.log("Use Ctrl+B D to detach, or exit Claude Code to end.\n");
+  // Interactive TUI mode
+  console.log(`botctl chat  (model: ${config.agent.model})`);
+  console.log("Type /exit or Ctrl+C to quit.\n");
 
-  const attachCmd = await client.getAttachCommand(agent.id);
-  const proc = Bun.spawn(["sh", "-c", attachCmd], {
-    stdin: "inherit",
-    stdout: "inherit",
-    stderr: "inherit",
+  const rl = createInterface({
+    input: process.stdin,
+    output: process.stdout,
+    prompt: "> ",
   });
-  await proc.exited;
 
-  // Clean up after detach/exit
-  try {
-    await client.kill(agent.id);
-  } catch {
-    // Session may already be dead
-  }
+  const cleanup = async () => {
+    rl.close();
+    try {
+      await client.kill(agent.id);
+    } catch {
+      // Session may already be dead
+    }
+  };
+
+  rl.prompt();
+
+  rl.on("line", async (line: string) => {
+    const input = line.trim();
+    if (!input) {
+      rl.prompt();
+      return;
+    }
+
+    if (input === "/exit" || input === "/quit") {
+      await cleanup();
+      process.exit(0);
+    }
+
+    try {
+      process.stdout.write("\n");
+      const response = await client.send(agent.id, input);
+      console.log(response.text);
+      console.log();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`Error: ${msg}\n`);
+    }
+    rl.prompt();
+  });
+
+  rl.on("close", async () => {
+    console.log();
+    await cleanup();
+    process.exit(0);
+  });
 }
 
 export async function runGateway(): Promise<void> {

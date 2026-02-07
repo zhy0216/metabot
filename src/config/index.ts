@@ -4,7 +4,7 @@ import type { Config } from "../types";
 
 const DEFAULT_CONFIG: Config = {
   agent: {
-    model: "claude-sonnet-4-20250514",
+    model: "claude-sonnet-4-5",
     provider: "claude-code",
     maxTokens: 4096,
     temperature: 0.7,
