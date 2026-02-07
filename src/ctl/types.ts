@@ -51,6 +51,7 @@ export interface AgentAdapter {
   buildLaunchCommand(opts: LaunchOptions): string[];
   formatPrompt(prompt: string): string;
   getReadyPattern(): RegExp;
+  getResponseMarker?(): string;
   parseOutput(raw: string): AgentOutput;
   cleanup(workspacePath: string): Promise<void>;
   summarizeMemory(ctx: SummarizeContext): Promise<string>;

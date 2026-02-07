@@ -91,10 +91,14 @@ export class AgentManager {
 
     agent.status = "working";
     try {
+      const beforeRaw = await this.tmux.capturePane(agent.sessionName);
+
       const formatted = adapter.formatPrompt(prompt);
       await this.tmux.sendKeys(agent.sessionName, formatted);
 
-      const raw = await this.waitForReady(agent.sessionName, adapter);
+      // Wait for response to stream in and stabilize
+      const raw = await this.waitForResponse(agent.sessionName, beforeRaw, adapter);
+
       const output = adapter.parseOutput(raw);
 
       this.hookManager?.emit("afterSend", {
@@ -187,6 +191,41 @@ export class AgentManager {
       if (Date.now() - lastChangeTime > idleTimeoutMs) return output;
 
       await Bun.sleep(pollIntervalMs);
+    }
+  }
+
+  private async waitForResponse(
+    session: string,
+    beforeContent: string,
+    adapter: AgentAdapter,
+    stableMs: number = 2000,
+    pollIntervalMs: number = 300,
+  ): Promise<string> {
+    const responseMarker = adapter.getResponseMarker?.();
+    let lastOutput = beforeContent;
+    let lastChangeTime = Date.now();
+    let contentChanged = false;
+
+    while (true) {
+      await Bun.sleep(pollIntervalMs);
+      const output = await this.tmux.capturePane(session);
+
+      if (output !== lastOutput) {
+        lastOutput = output;
+        lastChangeTime = Date.now();
+        if (output !== beforeContent) contentChanged = true;
+      }
+
+      if (!contentChanged) continue;
+
+      const isStable = Date.now() - lastChangeTime > stableMs;
+      const hasResponse = !responseMarker || output.includes(responseMarker);
+
+      // Response complete when: marker present AND pane has stabilized
+      if (hasResponse && isStable) return lastOutput;
+
+      // Safety timeout (2 minutes)
+      if (Date.now() - lastChangeTime > 120_000) return lastOutput;
     }
   }
 }

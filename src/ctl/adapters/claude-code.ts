@@ -43,7 +43,6 @@ export class ClaudeCodeAdapter implements AgentAdapter {
     if (opts.model) {
       cmd.push("--model", opts.model);
     }
-    cmd.push(opts.workspacePath);
     return cmd;
   }
 
@@ -55,9 +54,21 @@ export class ClaudeCodeAdapter implements AgentAdapter {
     return />\s*$/m;
   }
 
+  getResponseMarker(): string {
+    return "⏺";
+  }
+
   parseOutput(raw: string): AgentOutput {
     const clean = stripAnsi(raw);
-    const text = clean.replace(/>\s*$/m, "").trim();
+    // Extract response text after the last ⏺ marker (Claude Code's response indicator)
+    const idx = clean.lastIndexOf("⏺");
+    let text: string;
+    if (idx !== -1) {
+      text = clean.slice(idx + 1);
+    } else {
+      text = clean;
+    }
+    text = text.replace(/>\s*$/m, "").trim();
     return { text };
   }
 

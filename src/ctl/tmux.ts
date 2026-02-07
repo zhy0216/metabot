@@ -9,13 +9,21 @@ export class TmuxDriver {
   }
 
   async sendKeys(session: string, text: string): Promise<void> {
-    const proc = Bun.spawn(["tmux", "send-keys", "-t", session, text, "Enter"], {
+    // Send text with -l (literal) so Claude Code's TUI receives it correctly
+    const textProc = Bun.spawn(["tmux", "send-keys", "-t", session, "-l", text], {
       stdout: "ignore",
       stderr: "ignore",
     });
-    const exitCode = await proc.exited;
-    if (exitCode !== 0) {
+    if ((await textProc.exited) !== 0) {
       throw new Error(`Failed to send keys to session: ${session}`);
+    }
+    // Send Enter separately as a key name
+    const enterProc = Bun.spawn(["tmux", "send-keys", "-t", session, "Enter"], {
+      stdout: "ignore",
+      stderr: "ignore",
+    });
+    if ((await enterProc.exited) !== 0) {
+      throw new Error(`Failed to send Enter to session: ${session}`);
     }
   }
 

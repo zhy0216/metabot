@@ -21,7 +21,7 @@ export function formatDate(timestamp: number): string {
 }
 
 function getSessionFilePath(sessionId: string, date: string): string {
-  return join(getMemoriesDir(), `${sessionId}-${date}.md`);
+  return join(getMemoriesDir(), `${date}-${sessionId}.md`);
 }
 
 export async function readSessionMemory(
