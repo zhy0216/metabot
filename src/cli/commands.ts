@@ -2,76 +2,11 @@ import { loadConfig, getConfig, saveConfig } from "../config";
 import { join } from "path";
 import { homedir } from "os";
 import { mkdir } from "fs/promises";
-import { createInterface } from "readline";
-import { ensureDaemon } from "../daemon/lifecycle";
+import { TuiChannel } from "../channels";
 
 export async function runChat(message?: string): Promise<void> {
-  await loadConfig();
-  const config = getConfig();
-
-  const client = await ensureDaemon();
-
-  const agent = await client.spawn("claude-code", {
-    model: config.agent.model,
-    workspacePath: config.workspace,
-  });
-
-  if (message) {
-    // Single message mode
-    const response = await client.send(agent.id, message);
-    console.log(response.text);
-    await client.kill(agent.id);
-    return;
-  }
-
-  console.log(`botctl chat  (model: ${config.agent.model})`);
-  console.log("Type /exit or Ctrl+C to quit.\n");
-
-  const rl = createInterface({
-    input: process.stdin,
-    output: process.stdout,
-    prompt: "> ",
-  });
-
-  const cleanup = async () => {
-    rl.close();
-    try {
-      await client.kill(agent.id);
-    } catch {
-    }
-  };
-
-  rl.prompt();
-
-  rl.on("line", async (line: string) => {
-    const input = line.trim();
-    if (!input) {
-      rl.prompt();
-      return;
-    }
-
-    if (input === "/exit" || input === "/quit") {
-      await cleanup();
-      process.exit(0);
-    }
-
-    try {
-      process.stdout.write("\n");
-      const response = await client.send(agent.id, input);
-      console.log(response.text);
-      console.log();
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.error(`Error: ${msg}\n`);
-    }
-    rl.prompt();
-  });
-
-  rl.on("close", async () => {
-    console.log();
-    await cleanup();
-    process.exit(0);
-  });
+  const channel = new TuiChannel({ name: "tui", message });
+  await channel.start();
 }
 
 export async function runGateway(): Promise<void> {
