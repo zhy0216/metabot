@@ -1,6 +1,6 @@
 import { join } from "node:path";
 import { homedir } from "node:os";
-import { readdir } from "node:fs/promises";
+import { readdir, mkdir } from "node:fs/promises";
 
 export interface Interaction {
   time: string; // HH:MM
@@ -8,8 +8,8 @@ export interface Interaction {
   summary: string;
 }
 
-export function getMemoriesDir(): string {
-  return join(homedir(), ".metabot", "workspace", "memories");
+export function getSessionsDir(): string {
+  return join(homedir(), ".metabot", "sessions");
 }
 
 export function formatDate(timestamp: number): string {
@@ -20,8 +20,12 @@ export function formatDate(timestamp: number): string {
   return `${y}${m}${day}`;
 }
 
+export function getSessionDir(sessionId: string, date: string): string {
+  return join(getSessionsDir(), `${date}-${sessionId}`);
+}
+
 function getSessionFilePath(sessionId: string, date: string): string {
-  return join(getMemoriesDir(), `${date}-${sessionId}.md`);
+  return join(getSessionDir(sessionId, date), "memory.md");
 }
 
 export async function readSessionMemory(
@@ -44,8 +48,37 @@ export async function writeSessionMemory(
   date: string,
   content: string,
 ): Promise<void> {
+  const dir = getSessionDir(sessionId, date);
+  await mkdir(dir, { recursive: true });
   const path = getSessionFilePath(sessionId, date);
   await Bun.write(path, content);
+}
+
+export async function appendChatLog(
+  sessionId: string,
+  date: string,
+  role: string,
+  content: string,
+  timestamp: number,
+): Promise<void> {
+  const dir = getSessionDir(sessionId, date);
+  await mkdir(dir, { recursive: true });
+  const logPath = join(dir, "chat.log");
+  const time = new Date(timestamp).toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+  const line = `[${time}] ${role}: ${content}\n`;
+
+  const file = Bun.file(logPath);
+  let existing = "";
+  try {
+    if (await file.exists()) {
+      existing = await file.text();
+    }
+  } catch {}
+  await Bun.write(logPath, existing + line);
 }
 
 export async function appendInteraction(
@@ -97,11 +130,12 @@ export async function appendInteraction(
 }
 
 export async function listRecentSessions(limit: number = 10): Promise<string[]> {
-  const dir = getMemoriesDir();
+  const dir = getSessionsDir();
   try {
-    const files = await readdir(dir);
-    return files
-      .filter((f) => f.endsWith(".md"))
+    const entries = await readdir(dir, { withFileTypes: true });
+    return entries
+      .filter((e) => e.isDirectory())
+      .map((e) => e.name)
       .sort()
       .reverse()
       .slice(0, limit);
@@ -111,13 +145,14 @@ export async function listRecentSessions(limit: number = 10): Promise<string[]> 
 }
 
 export async function loadRecentMemories(limit: number = 5): Promise<string> {
-  const files = await listRecentSessions(limit);
-  const dir = getMemoriesDir();
+  const dirs = await listRecentSessions(limit);
+  const baseDir = getSessionsDir();
   const parts: string[] = [];
 
-  for (const file of files) {
+  for (const dirName of dirs) {
     try {
-      const content = await Bun.file(join(dir, file)).text();
+      const memoryPath = join(baseDir, dirName, "memory.md");
+      const content = await Bun.file(memoryPath).text();
       parts.push(content);
     } catch {
     }

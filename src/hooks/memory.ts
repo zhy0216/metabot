@@ -8,6 +8,7 @@ import {
   readSessionMemory,
   writeSessionMemory,
   appendInteraction,
+  appendChatLog,
   formatDate,
 } from "../memory/store";
 
@@ -34,6 +35,9 @@ export function createMemoryHook(
         prompt: ctx.prompt.slice(0, 200),
         summary: "(summarizing...)",
       });
+
+      await appendChatLog(sessionId, date, "user", ctx.prompt, now);
+      await appendChatLog(sessionId, date, "assistant", ctx.output, now);
 
       await updateLastResponseTime(ctx.agentId, now);
 
