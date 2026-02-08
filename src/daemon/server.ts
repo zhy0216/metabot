@@ -3,6 +3,8 @@ import { homedir } from "node:os";
 import { TmuxDriver } from "../ctl/tmux";
 import { AgentManager } from "../ctl/manager";
 import { ClaudeCodeAdapter } from "../ctl/adapters/claude-code";
+import { HookManager } from "../hooks/manager";
+import { createMemoryHook } from "../hooks/memory";
 import { loadConfig, getConfig } from "../config";
 import { TelegramChannel } from "../channels";
 import type { SpawnConfig } from "../ctl/types";
@@ -17,7 +19,12 @@ const startTime = Date.now();
 
 const tmux = new TmuxDriver();
 const manager = new AgentManager(tmux);
-manager.registerAdapter(new ClaudeCodeAdapter());
+const adapter = new ClaudeCodeAdapter();
+manager.registerAdapter(adapter);
+
+const hookManager = new HookManager();
+hookManager.register(createMemoryHook((type) => manager.getAdapter(type)));
+manager.setHookManager(hookManager);
 
 function err(message: string, status = 400) {
   return Response.json({ error: message }, { status });

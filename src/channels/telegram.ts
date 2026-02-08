@@ -94,16 +94,16 @@ export class TelegramChannel extends BaseChannel {
     const userId = msg.from.id;
     const text = msg.text;
 
+    if (this.allowedUsers && !this.allowedUsers.includes(userId)) {
+      await this.sendMessage(chatId, "Sorry, you are not authorized.");
+      return;
+    }
+
     if (text === "/start") {
       await this.sendMessage(
         chatId,
         `Hello! I'm a metabot agent. Send me a message and I'll respond.\n\nYour user ID: ${userId}`,
       );
-      return;
-    }
-
-    if (this.allowedUsers && !this.allowedUsers.includes(userId)) {
-      await this.sendMessage(chatId, "Sorry, you are not authorized.");
       return;
     }
 
