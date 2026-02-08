@@ -3,7 +3,7 @@ import { loadConfig, getConfig, saveConfig } from "../config";
 import { join } from "path";
 import { homedir } from "os";
 import { mkdir } from "fs/promises";
-import { TuiChannel, TelegramChannel } from "../channels";
+import { TuiChannel } from "../channels";
 
 export async function runChat(message?: string): Promise<void> {
   const channel = new TuiChannel({ name: "tui", message });
@@ -11,24 +11,11 @@ export async function runChat(message?: string): Promise<void> {
 }
 
 export async function runGateway(): Promise<void> {
-  await loadConfig();
-  const config = getConfig();
-
-  const channels: Promise<void>[] = [];
-
-  if (config.channels?.telegram?.botToken) {
-    console.log("Starting Telegram channel...");
-    const tg = new TelegramChannel({ name: "telegram" });
-    channels.push(tg.start());
-  }
-
-  if (channels.length === 0) {
-    console.log("No channels configured.");
-    console.log("Run 'botctl onboard' to set up channels.");
-    return;
-  }
-
-  await Promise.all(channels);
+  // Gateway now runs inside the daemon process.
+  // Import and run the daemon server directly (blocks in foreground).
+  await import("../daemon/server");
+  // server.ts self-starts and runs channels — this await keeps the process alive
+  await new Promise(() => {}); // block forever
 }
 
 export async function runOnboard(): Promise<void> {
@@ -166,8 +153,8 @@ export async function runStatus(): Promise<void> {
 }
 
 export async function runTelegram(): Promise<void> {
-  const channel = new TelegramChannel({ name: "telegram" });
-  await channel.start();
+  // Telegram now runs inside the daemon. Just start the daemon.
+  await runGateway();
 }
 
 function promptInput(prompt: string): Promise<string> {

@@ -3,6 +3,8 @@ import { homedir } from "node:os";
 import { TmuxDriver } from "../ctl/tmux";
 import { AgentManager } from "../ctl/manager";
 import { ClaudeCodeAdapter } from "../ctl/adapters/claude-code";
+import { loadConfig, getConfig } from "../config";
+import { TelegramChannel } from "../channels";
 import type { SpawnConfig } from "../ctl/types";
 
 const METABOT_DIR = join(homedir(), ".metabot");
@@ -165,7 +167,28 @@ async function start() {
   console.log(`metabot daemon started (pid ${process.pid})`);
   console.log(`socket: ${SOCKET_PATH}`);
 
+  // Start configured channels in the same process
+  await startChannels();
+
   return server;
+}
+
+async function startChannels() {
+  try {
+    await loadConfig();
+    const config = getConfig();
+
+    if (config.channels?.telegram?.botToken) {
+      console.log("Starting Telegram channel...");
+      const tg = new TelegramChannel({ name: "telegram" });
+      tg.start().catch((err) => {
+        console.error("Telegram channel error:", err.message);
+      });
+    }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("Failed to start channels:", msg);
+  }
 }
 
 start().catch((e) => {
