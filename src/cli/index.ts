@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 
-import { runChat, runGateway, runOnboard, runStatus } from "./commands";
+import { runChat, runGateway, runOnboard, runStatus, runTelegram } from "./commands";
 import { runSpawn } from "./commands/spawn";
 import { runSend } from "./commands/send";
 import { runOutput } from "./commands/output";
@@ -30,6 +30,10 @@ async function main() {
 
     case "gateway":
       await runGateway();
+      break;
+
+    case "telegram":
+      await runTelegram();
       break;
 
     case "onboard":
@@ -139,6 +143,7 @@ Commands:
   attach            Attach to agent's tmux session
   skill             Hot-load a skill into an agent
   daemon            Manage the background daemon
+  telegram          Start Telegram bot channel
   gateway           Start all configured channels
   onboard           Set up workspace and config
   status            Show configuration status
@@ -167,6 +172,7 @@ Examples:
   botctl attach <agent-id>                    # Attach to agent session
   botctl skill <agent-id> ./skill.md          # Load skill into agent
   botctl daemon status                        # Check daemon status
+  botctl telegram                   # Start Telegram bot
   botctl gateway                    # Run with all channels
 `);
 }

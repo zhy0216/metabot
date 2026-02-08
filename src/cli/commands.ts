@@ -1,8 +1,9 @@
+import { createInterface } from "readline";
 import { loadConfig, getConfig, saveConfig } from "../config";
 import { join } from "path";
 import { homedir } from "os";
 import { mkdir } from "fs/promises";
-import { TuiChannel } from "../channels";
+import { TuiChannel, TelegramChannel } from "../channels";
 
 export async function runChat(message?: string): Promise<void> {
   const channel = new TuiChannel({ name: "tui", message });
@@ -11,9 +12,23 @@ export async function runChat(message?: string): Promise<void> {
 
 export async function runGateway(): Promise<void> {
   await loadConfig();
+  const config = getConfig();
 
-  console.log("Gateway mode is not yet implemented for ctl-based architecture.");
-  console.log("Use 'botctl spawn' to create agents and 'botctl send' to interact.");
+  const channels: Promise<void>[] = [];
+
+  if (config.channels?.telegram?.botToken) {
+    console.log("Starting Telegram channel...");
+    const tg = new TelegramChannel({ name: "telegram" });
+    channels.push(tg.start());
+  }
+
+  if (channels.length === 0) {
+    console.log("No channels configured.");
+    console.log("Run 'botctl onboard' to set up channels.");
+    return;
+  }
+
+  await Promise.all(channels);
 }
 
 export async function runOnboard(): Promise<void> {
@@ -74,9 +89,53 @@ export async function runOnboard(): Promise<void> {
     for (const f of skipped) console.log(`  ${f}`);
   }
 
+  // Channel setup
+  const existingToken = config.channels?.telegram?.botToken;
+  const setupTelegram = await promptYesNo(
+    existingToken
+      ? `\nTelegram bot token already configured. Reconfigure? (y/n): `
+      : `\nSet up Telegram channel? (y/n): `,
+  );
+  if (setupTelegram) {
+    console.log("\nTo create a Telegram bot:");
+    console.log("  1. Open Telegram and search for @BotFather");
+    console.log("  2. Send /newbot and follow the prompts");
+    console.log("  3. Copy the bot token\n");
+
+    const token = await promptInput(
+      existingToken ? `Bot token (Enter to keep current): ` : `Bot token: `,
+    );
+    const botToken = token.trim() || existingToken;
+    if (botToken) {
+      const existingUsers = config.channels?.telegram?.allowedUsers;
+      const usersInput = await promptInput(
+        `Allowed user IDs (comma-separated, Enter to ${existingUsers?.length ? "keep current" : "allow all"}): `,
+      );
+      const allowedUsers = usersInput.trim()
+        ? usersInput.split(",").map((s) => Number(s.trim())).filter((n) => !isNaN(n))
+        : existingUsers;
+
+      config.channels = {
+        ...config.channels,
+        telegram: {
+          botToken,
+          ...(allowedUsers?.length ? { allowedUsers } : {}),
+        },
+      };
+      await saveConfig(config);
+      console.log("Telegram channel config saved.");
+    } else {
+      console.log("Skipped — no token provided.");
+    }
+  }
+
   console.log("\nTo get started:");
   console.log("  botctl spawn claude-code");
   console.log("  botctl spawn claude-code --project ./myapp");
+  if (config.channels?.telegram?.botToken) {
+    console.log("  botctl telegram              # Start Telegram bot");
+    console.log("  botctl gateway               # Start all channels");
+  }
 }
 
 export async function runStatus(): Promise<void> {
@@ -104,4 +163,24 @@ export async function runStatus(): Promise<void> {
   } else {
     console.log("❌ claude not found - install Claude Code CLI");
   }
+}
+
+export async function runTelegram(): Promise<void> {
+  const channel = new TelegramChannel({ name: "telegram" });
+  await channel.start();
+}
+
+function promptInput(prompt: string): Promise<string> {
+  const rl = createInterface({ input: process.stdin, output: process.stdout });
+  return new Promise((resolve) => {
+    rl.question(prompt, (answer) => {
+      rl.close();
+      resolve(answer);
+    });
+  });
+}
+
+async function promptYesNo(prompt: string): Promise<boolean> {
+  const answer = await promptInput(prompt);
+  return answer.trim().toLowerCase().startsWith("y");
 }

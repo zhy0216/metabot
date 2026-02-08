@@ -39,6 +39,7 @@ function mergeConfig(defaults: Config, loaded: Partial<Config>): Config {
   return {
     agent: { ...defaults.agent, ...loaded.agent },
     workspace: loaded.workspace ?? defaults.workspace,
+    channels: loaded.channels,
   };
 }
 

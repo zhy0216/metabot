@@ -13,7 +13,17 @@ export interface AgentConfig {
   systemPrompt?: string;
 }
 
+export interface TelegramConfig {
+  botToken: string;
+  allowedUsers?: number[];
+}
+
+export interface ChannelsConfig {
+  telegram?: TelegramConfig;
+}
+
 export interface Config {
   agent: AgentConfig;
   workspace: string;
+  channels?: ChannelsConfig;
 }
