@@ -47,6 +47,8 @@ test("multiple hooks on same event are called in order", async () => {
 test("failing hook does not block other hooks", async () => {
   const hm = new HookManager();
   const fn = mock(async () => {});
+  const origError = console.error;
+  console.error = mock(() => {});
 
   hm.register({
     name: "failing",
@@ -57,6 +59,7 @@ test("failing hook does not block other hooks", async () => {
 
   await hm.emit("afterSend", baseCtx);
   expect(fn).toHaveBeenCalledTimes(1);
+  console.error = origError;
 });
 
 test("hooks on different events are independent", async () => {

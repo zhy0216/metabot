@@ -33,7 +33,8 @@ test("buildLaunchCommand returns claude command", () => {
     workspacePath: "/tmp/test-ws",
   });
   expect(cmd[0]).toBe("claude");
-  expect(cmd).toContain("/tmp/test-ws");
+  expect(cmd).toContain("--dangerously-skip-permissions");
+  expect(cmd).not.toContain("/tmp/test-ws");
 });
 
 test("getReadyPattern matches Claude Code prompt", () => {
